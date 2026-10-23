@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "tasks": {
+    "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**", "out/**"] },
+    "dev": { "cache": false, "persistent": true },
+    "check": { "dependsOn": ["^check"] },
+    "test": { "dependsOn": ["^build"], "outputs": [] },
+    "@pixelforge/desktop#test": { "dependsOn": ["@pixelforge/web#build"], "cache": false, "outputs": [] }
+  }
+}

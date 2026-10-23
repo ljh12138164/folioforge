@@ -1,0 +1,6 @@
+{
+  "generator": "built-in image_gen",
+  "prompt": "Create a pristine high-resolution wide panoramic landscape photograph to serve as the actual sample image in the approved PixelForge homepage design. Reference image is a website design comp: use ONLY its mountain-lake photograph as visual inspiration. Deliver the landscape itself filling the entire frame, NO website, UI, type, labels, dividers, cards, buttons or borders. A serene alpine lake reflecting a rugged light-gray snowy mountain range, deep green conifer forests across the middle and along both banks, clear soft blue sky with a few natural white clouds, morning sunlight from the right. Natural photographic color, fine foliage detail for testing image compression, believable rock textures, level horizon, panoramic composition about 3:1. Do not create a before/after split, filters, photographic montage or watermark. This is one continuous consistent landscape photograph.",
+  "reference": ".impeccable/mocks/home-a.png",
+  "role": "synthetic sample image; not product evidence"
+}

@@ -1,0 +1,10 @@
+{
+  "name": "@pixelforge/image-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./worker": "./src/worker.ts" },
+  "scripts": { "check": "tsc --noEmit", "test": "node --experimental-strip-types test/smoke.ts" },
+  "dependencies": { "@imagemagick/magick-wasm": "^0.0.38" },
+  "devDependencies": { "@types/node": "^22.0.0" }
+}
