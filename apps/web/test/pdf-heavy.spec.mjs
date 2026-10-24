@@ -4,7 +4,7 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { readFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const shots = resolve('../../.impeccable/review/pdf-heavy');
+const shots = resolve('work/test-results/visual/pdf-heavy');
 const add = (page, bytes, name = 'synthetic.pdf') => page.getByLabel('导入 PDF 或图片', { exact: true }).setInputFiles({ name, mimeType: 'application/pdf', buffer: Buffer.from(bytes) });
 async function download(page, info, name) {
   const event = page.waitForEvent('download'); await page.getByRole('link', { name: '下载结果', exact: true }).click();

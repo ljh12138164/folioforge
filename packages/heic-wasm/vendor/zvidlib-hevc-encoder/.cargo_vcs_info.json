@@ -1,0 +1,6 @@
+{
+  "git": {
+    "sha1": "bcb92a6ab080d58fc34bafbf05455b2a8cfc1010"
+  },
+  "path_in_vcs": "crates/zvidlib-hevc-encoder"
+}

@@ -3,7 +3,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const shots = resolve('../../.impeccable/review/pdf-duplex');
+const shots = resolve('work/test-results/visual/pdf-duplex');
 async function scan(name, widths) {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);

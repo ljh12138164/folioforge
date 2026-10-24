@@ -58,7 +58,7 @@ app.once('browser-window-created', (_event, window) => {
       await capture('desktop-home.png');
       console.log('Desktop home and actual WebP example: passed');
       await window.loadURL('pixelforge://app/convert/?format=AVIF&quality=67&maxWidth=640');
-      await waitFor("document.querySelector('footer')?.textContent.includes('14 种导出格式')");
+      await waitFor("document.querySelector('footer')?.textContent.includes('16 种导出格式')");
       assert.equal(await js("document.querySelector('#quality').value"), '67');
       assert.equal(await js("document.querySelector('#max-width').value"), '640');
       assert.equal(await js("document.querySelector('.format-option.chosen').textContent"), 'AVIF');

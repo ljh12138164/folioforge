@@ -54,7 +54,7 @@ async function prepare(page, memory = 8, failure = '', overlap = false) {
   }, { memory, failure, overlap });
   await page.goto('/convert/?format=JPEG');
   await expect(page.locator('footer')).toContainText('引擎就绪');
-  await expect(page.getByRole('checkbox', { name: '保存任务到此设备' })).toBeEnabled();
+  await expect(page.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
 }
 
 async function add(page, sizes) {

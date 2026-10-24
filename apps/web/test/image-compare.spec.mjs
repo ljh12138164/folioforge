@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const captures = resolve('../../.impeccable/review/image-compare');
+const captures = resolve('work/test-results/visual/image-compare');
 const sample = await readFile(resolve('public/sample-landscape.png'));
 const originalWidth = sample.readUInt32BE(16), originalHeight = sample.readUInt32BE(20);
 async function convert(page) {
@@ -14,6 +14,47 @@ async function convert(page) {
   await expect.poll(() => page.locator('.image-compare-layer img').evaluateAll(images => images.length === 2 && images.every(image => image.complete && image.naturalWidth > 0))).toBe(true);
 }
 const geometry = page => page.locator('.image-compare-layer img').evaluateAll(images => images.map(image => ({ width: image.width, height: image.height, left: image.style.left, top: image.style.top })));
+
+test('import and setting changes automatically preview real encoded bytes and sizes', async ({ page }) => {
+  await page.goto('/convert/?format=JPEG&quality=12&maxWidth=800');
+  await page.getByRole('button', { name: /试试这张示例/ }).click();
+  await expect(page.getByRole('region', { name: '图片转换前后对照' })).toBeVisible();
+  const result = page.getByAltText('实际转换结果');
+  await expect(result).toBeVisible({ timeout: 30_000 });
+  const original = page.locator('.image-compare-sizes>div').first();
+  const converted = page.locator('.image-compare-sizes>div').last();
+  await expect(original).toContainText('PNG');
+  await expect(converted).toContainText('JPG');
+  const firstUrl = await result.getAttribute('src');
+  const byteSize = await result.evaluate(async image => (await (await fetch(image.src)).blob()).size);
+  await expect(converted.locator('strong')).toHaveText(`${(byteSize / 1024).toFixed(1)} KB`);
+  await expect(page.locator('.file-row .status')).toHaveText('等待转换');
+  const download = page.waitForEvent('download');
+  await page.getByRole('link', { name: '下载 JPG', exact: true }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('示例-山景.jpg');
+  expect((await readFile(await file.path())).length).toBe(byteSize);
+
+  // Rapid changes must discard an older conversion rather than label it with new settings.
+  await page.locator('#quality').fill('90');
+  await page.getByLabel('最大宽度', { exact: true }).fill('600');
+  await page.getByRole('button', { name: 'PNG', exact: true }).click();
+  await expect(converted).toContainText('转换后 · PNG');
+  await expect(converted).toContainText(`600 × ${Math.round(originalHeight * 600 / originalWidth)}`, { timeout: 30_000 });
+  await expect(result).not.toHaveAttribute('src', firstUrl);
+  const encoded = await result.evaluate(async image => {
+    await image.decode();
+    const blob = await (await fetch(image.src)).blob();
+    return { size: blob.size, type: blob.type, width: image.naturalWidth };
+  });
+  expect(encoded.type).toBe('image/png');
+  expect(encoded.width).toBe(600);
+  const formatted = encoded.size >= 1024 * 1024 ? `${(encoded.size / 1024 / 1024).toFixed(2)} MB` : `${(encoded.size / 1024).toFixed(1)} KB`;
+  await expect(converted.locator('strong')).toHaveText(formatted);
+  await expect(page.locator('.file-row .status')).toHaveText('等待转换');
+  await mkdir(captures, { recursive: true });
+  await page.screenshot({ path: resolve(captures, 'automatic-preview.png'), fullPage: true });
+});
 
 test('actual input/output pixels share zoom and pan, keyboard split, resize and fullscreen', async ({ page }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));

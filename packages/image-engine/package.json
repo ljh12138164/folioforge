@@ -5,6 +5,6 @@
   "type": "module",
   "exports": { ".": "./src/index.ts", "./worker": "./src/worker.ts" },
   "scripts": { "check": "tsc --noEmit", "test": "node --experimental-strip-types test/smoke.ts" },
-  "dependencies": { "@imagemagick/magick-wasm": "^0.0.38" },
+  "dependencies": { "@imagemagick/magick-wasm": "^0.0.38", "@pixelforge/heic-wasm": "workspace:*", "@pixelforge/vectorizer-wasm": "workspace:*" },
   "devDependencies": { "@types/node": "^22.0.0" }
 }

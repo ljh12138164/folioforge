@@ -7,3 +7,8 @@ out/
 work/
 *.local
 apps/web/public/pdf-assets/
+apps/web/public/image-assets/
+target/
+packages/heic-wasm/pkg/
+packages/vectorizer-wasm/pkg/
+.seo-cache/

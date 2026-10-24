@@ -4,7 +4,7 @@ import { unzipSync } from 'fflate';
 import { readFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const screenshots = resolve('../../.impeccable/review/pdf');
+const screenshots = resolve('work/test-results/visual/pdf');
 const source = async (widths, rotation = 0) => {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);

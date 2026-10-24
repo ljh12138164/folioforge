@@ -27,6 +27,16 @@ jobs:
         with:
           node-version: 24
       - uses: pnpm/action-setup@v4
+      - name: Install Rust WASM target
+        run: rustup toolchain install 1.97.1 --profile minimal --target wasm32-unknown-unknown
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/wasm-bindgen*
+            target
+          key: rust-heic-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
       - run: pnpm install --frozen-lockfile
       - name: Install Electron binary before resolving its path
         working-directory: apps/desktop
@@ -44,6 +54,8 @@ jobs:
           sudo chmod 4755 "$sandbox"
       - run: pnpm check
       - run: pnpm --filter @pixelforge/image-engine test
+      - run: pnpm --filter @pixelforge/heic-wasm test
+      - run: pnpm --filter @pixelforge/vectorizer-wasm test
       - name: Cache verified OCR models
         uses: actions/cache@v4
         continue-on-error: true

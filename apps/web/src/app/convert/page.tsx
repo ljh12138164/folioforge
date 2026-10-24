@@ -1,3 +1,5 @@
 import { App } from '../../App';
+import { pageMetadata, PageSchema } from '../../seo';
 
-export default function ConvertPage() { return <App />; }
+export const metadata = pageMetadata('convert');
+export default function ConvertPage() { return <><PageSchema page="convert" /><App /></>; }

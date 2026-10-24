@@ -14,7 +14,7 @@ export const formats = [
   { id: 'PSD', label: 'PSD', extension: 'psd', mime: 'image/vnd.adobe.photoshop', description: '扁平图像，不保留图层', lossy: false },
   { id: 'JP2', label: 'JPEG 2000', extension: 'jp2', mime: 'image/jp2', description: 'JPEG 2000 图像', lossy: true },
   { id: 'EXR', label: 'EXR', extension: 'exr', mime: 'image/x-exr', description: '图像交换，不保证 HDR 保真', lossy: false },
-  { id: 'SVG', label: 'SVG', extension: 'svg', mime: 'image/svg+xml', description: '仅导入，转换为位图', lossy: false },
+  { id: 'SVG', label: 'SVG', extension: 'svg', mime: 'image/svg+xml', description: '描摹为矢量路径，适合图标与线稿', lossy: false },
 ] as const;
 
 export type FormatId = (typeof formats)[number]['id'];
@@ -26,6 +26,7 @@ export type ConvertOptions = {
   maxHeight?: number;
   stripMetadata: boolean;
   background: string;
+  svgPreset?: 'poster' | 'bw' | 'photo';
 };
 export type Conversion = {
   data: Uint8Array<ArrayBuffer>;

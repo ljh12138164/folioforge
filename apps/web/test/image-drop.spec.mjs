@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 test('dragging a workbench image never imports it again; external file drops still work', async ({ page }) => {
   await page.goto('/convert/');
   await page.getByRole('button', { name: /试试这张示例/ }).click();
-  const source = page.getByAltText('待转换图片预览');
+  await expect(page.getByAltText('实际转换结果')).toBeVisible({ timeout: 30_000 });
+  const source = page.getByAltText('转换前的原图');
   await expect.poll(() => source.evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
   const box = await source.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

@@ -1,0 +1,17 @@
+{
+  "name": "@pixelforge/heic-wasm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./pkg/folioforge_heic.js",
+    "./module.wasm": "./pkg/folioforge_heic_bg.wasm",
+    "./LICENSE.txt": "./LICENSE.txt"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "cargo check --manifest-path Cargo.toml --target wasm32-unknown-unknown --locked",
+    "test": "node test/encode.mjs"
+  },
+  "devDependencies": { "@imagemagick/magick-wasm": "^0.0.38" }
+}

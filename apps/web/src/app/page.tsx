@@ -1,3 +1,5 @@
 import { ToolsHome } from '../tools/ToolsHome';
+import { pageMetadata, PageSchema } from '../seo';
 
-export default function Page() { return <ToolsHome />; }
+export const metadata = pageMetadata('home');
+export default function Page() { return <><PageSchema page="home" /><ToolsHome /></>; }
