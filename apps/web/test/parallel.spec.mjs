@@ -109,6 +109,7 @@ for (const failure of ['once', 'always', 'crash']) {
     await expect(page.locator('.status-done')).toHaveCount(failure === 'always' ? 3 : 4);
     await expect(page.locator('.status-error')).toHaveCount(failure === 'always' ? 1 : 0);
     expect(stats.active).toBe(0);
-    expect(stats.live).toBe(1);
+    // A failed selected image may start its temporary comparison preview after the queue unlocks.
+    await expect.poll(() => page.evaluate(() => window.__work.live)).toBe(1);
   });
 }
