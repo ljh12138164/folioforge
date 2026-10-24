@@ -1,0 +1,67 @@
+name: Desktop compatibility
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, macos-15, macos-15-intel, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @pixelforge/web exec playwright install --with-deps chromium
+      - if: runner.os == 'Linux'
+        name: Install Linux desktop test dependencies
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64
+      - if: runner.os == 'Linux'
+        name: Configure Electron sandbox helper
+        working-directory: apps/desktop
+        run: |
+          sandbox="$(node -p "require('node:path').join(require('node:path').dirname(require('electron')), 'chrome-sandbox')")"
+          sudo chown root:root "$sandbox"
+          sudo chmod 4755 "$sandbox"
+      - run: pnpm check
+      - name: Test renderer and image engine
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            xvfb-run -a pnpm test
+          else
+            pnpm test
+          fi
+      - run: pnpm desktop:package
+      - if: runner.os == 'Linux'
+        name: Configure packaged sandbox helper
+        run: |
+          sudo chown root:root apps/desktop/dist/PixelForge-linux-x64/chrome-sandbox
+          sudo chmod 4755 apps/desktop/dist/PixelForge-linux-x64/chrome-sandbox
+      - name: Test packaged application
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            xvfb-run -a pnpm --filter @pixelforge/desktop test:package
+          else
+            pnpm --filter @pixelforge/desktop test:package
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-evidence-${{ matrix.os }}
+          path: |
+            apps/desktop/work/smoke/*.png
+            apps/desktop/work/packaged-smoke/*.png
+            apps/web/work/test-results/**

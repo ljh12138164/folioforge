@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.next/
+out/
+*.tsbuildinfo
+.turbo/
+work/
+*.local
+apps/web/public/pdf-assets/
