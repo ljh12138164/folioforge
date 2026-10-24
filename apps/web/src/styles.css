@@ -389,9 +389,278 @@
   .home-guide p { @apply max-w-[65ch] text-sm leading-6 text-muted; }
   .home-guide p+p { @apply mt-2; }
   .home-guide a { @apply mt-3.5 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline; }
+
+  .tools-intro { @apply grid grid-cols-[1.25fr_1fr] items-center gap-12 py-10 pt-12; }
+  .tools-intro h1 { @apply text-[clamp(30px,3.6vw,44px)] leading-[1.22] tracking-[-0.035em]; }
+  .tools-intro>div>p { @apply mt-3.5 text-sm leading-[1.85] text-muted; }
+  .tools-intro-actions { @apply mt-6 flex flex-wrap items-center gap-3; }
+  .tools-intro .primary, .tools-intro .secondary { @apply inline-flex min-h-[42px] items-center gap-2.5 px-4.5 py-2.5 text-[13px] no-underline; }
+  .tools-principle {
+    @apply rounded-2xl border border-line bg-panel px-7 py-6;
+    box-shadow: 0 1px 2px rgba(20, 23, 31, 0.03), 0 10px 28px -8px rgba(20, 23, 31, 0.05);
+  }
+  .tools-principle>svg { @apply mb-3 text-accent; }
+  .tools-principle>strong { @apply block text-base font-semibold text-ink; }
+  .tools-intro .tools-principle>p { @apply mt-1.5 text-[12.5px] leading-[1.75]; }
+  .tools-principle>span { @apply mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-medium text-accent; }
+  .tools-directory {
+    @apply rounded-2xl border border-line bg-panel px-7 pt-[26px] pb-7;
+    box-shadow: 0 1px 2px rgba(20, 23, 31, 0.03), 0 12px 32px -8px rgba(20, 23, 31, 0.05);
+  }
+  .tools-directory-heading { @apply flex items-center justify-between gap-6; }
+  .tools-directory h2 { @apply text-lg font-semibold tracking-[-0.025em]; }
+  .tools-search { @apply flex min-h-[39px] w-[min(340px,45%)] items-center gap-2.5 rounded-lg border border-control-line bg-surface px-3 text-muted focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent; }
+  .tools-search input { @apply w-full min-w-0 border-none bg-transparent py-2.5 text-xs text-ink outline-none placeholder:text-muted placeholder:opacity-100 focus-visible:outline-none; }
+  .tools-search input::-webkit-search-cancel-button { @apply hidden; }
+  .tools-search button { @apply min-h-[25px] min-w-[25px]; }
+  .tools-filter { @apply mt-5 flex gap-5 border-b border-line; }
+  .tools-filter>button { @apply min-h-[41px] gap-2 border-b-2 border-transparent px-0.5 pb-3 text-[12.5px] font-medium text-muted; }
+  .tools-filter>button[aria-pressed=true] { @apply border-b-accent font-semibold text-accent; }
+  .tools-filter span { @apply rounded-full bg-surface px-1.5 py-0.5 text-[10px] tabular-nums; }
+  .tools-filter>button[aria-pressed=true] span { @apply bg-accent-soft text-accent; }
+  .tools-list { @apply mt-5 grid grid-cols-3 gap-3; }
+  .tools-entry {
+    @apply flex min-h-[92px] items-start gap-3.5 rounded-xl border border-line bg-surface p-4 text-accent no-underline transition-all duration-150 hover:-translate-y-px hover:border-accent-line hover:bg-panel;
+  }
+  .tools-entry:hover { box-shadow: 0 4px 14px -4px rgba(20, 23, 31, 0.08); }
+  .tools-entry-icon { @apply grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-line bg-panel text-accent transition-colors duration-150; }
+  .tools-entry:hover .tools-entry-icon { @apply border-accent-line bg-accent-soft; }
+  .tools-entry>div { @apply min-w-0 flex-1; }
+  .tools-entry h3 { @apply mb-1 text-[13.5px] font-semibold text-ink; }
+  .tools-entry p { @apply text-xs leading-[1.65] text-muted; }
+  .tools-entry-arrow { @apply mt-0.5 ml-auto text-muted transition-all duration-150; }
+  .tools-entry:hover .tools-entry-arrow { @apply translate-x-[3px] text-accent; }
+  .tools-guide { @apply scroll-mt-[90px] pt-10 pb-6; }
+  .tools-guide>h2 { @apply mb-5 text-[17px] font-semibold; }
+  .tools-guide>div { @apply grid grid-cols-3 gap-5; }
+  .tools-guide article { @apply rounded-[14px] border border-line bg-panel px-5.5 py-5; }
+  .tools-guide article>svg { @apply mb-2.5 text-accent; }
+  .tools-guide h3 { @apply mb-1.5 text-[13.5px] font-semibold text-ink; }
+  .tools-guide p { @apply max-w-[36ch] text-xs leading-[1.85] text-muted; }
+  .tools-faq { @apply my-3.5 mb-1.5 rounded-[14px] border border-line bg-surface px-5.5 py-4 text-xs text-muted; }
+  .tools-faq summary { @apply cursor-pointer font-medium text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent; }
+  .tools-faq p { @apply mt-3 max-w-[85ch] leading-[1.9]; }
+  .tools-faq a { @apply mt-3 inline-flex items-center gap-2 font-medium text-accent; }
+  .tools-no-results { @apply flex flex-col items-center gap-2.5 px-5 py-14 text-muted; }
+  .tools-no-results h3 { @apply text-[15px] font-medium text-ink; }
+  .tools-no-results p { @apply text-xs; }
+  .tools-no-results button { @apply mt-2.5 min-h-9 gap-2 text-xs text-accent; }
+
+  .pdf-intro { @apply pt-7 pb-4.5; }
+  .pdf-intro h1 { @apply text-[30px]; }
+  .pdf-intro h1>span { @apply inline; }
+  .pdf-private { @apply inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1.5 text-xs font-medium whitespace-nowrap text-accent; }
+  .pdf-tool-tabs { @apply mb-4.5 grid grid-cols-7 gap-1.5 rounded-[14px] border border-line bg-surface p-1.5; }
+  .pdf-tool-tabs>button { @apply min-h-[38px] justify-start gap-2 rounded-[9px] border border-transparent px-2.5 text-[12.5px] font-medium whitespace-nowrap text-muted; }
+  .pdf-tool-tabs>button>svg { @apply text-muted transition-colors duration-150; }
+  .pdf-tool-tabs>button[aria-pressed=true] {
+    @apply border-accent-line bg-panel font-semibold text-accent;
+    box-shadow: 0 1px 2px rgba(20, 23, 31, 0.06);
+  }
+  .pdf-tool-tabs>button[aria-pressed=true]>svg { @apply text-accent; }
+  .pdf-tool-tabs>button:hover:not(:disabled):not([aria-pressed=true]) { @apply bg-panel text-ink; }
+  .pdf-workspace { @apply grid-cols-[minmax(0,1fr)_324px] items-stretch; }
+  .pdf-main { @apply min-h-[580px]; }
+  .pdf-main .panel-heading h2, .pdf-main .toolbar>button { @apply whitespace-nowrap; }
+  .pdf-workspace.pdf-drop-active { @apply outline-2 outline-offset-[3px] outline-accent; }
+  .pdf-empty { @apply m-5 min-h-[455px]; }
+  .pdf-empty h2 { @apply text-xl font-semibold tracking-[-0.025em]; }
+  .pdf-empty .drop-hint { @apply mt-6 font-sans text-[11px]; }
+  .pdf-empty-undo { @apply mt-4 text-[13px] text-accent; }
+  .pdf-local-tag { @apply text-[11px] text-muted; }
+  .pdf-settings { @apply min-w-0 bg-surface; }
+  .pdf-settings .pdf-setting-section { @apply m-0 block min-w-0 border-0 border-b border-line p-5.5; }
+  .pdf-setting-section h3 { @apply m-0 mb-2 text-sm font-semibold text-ink; }
+  .pdf-setting-section>p { @apply m-0 text-xs leading-[1.8] text-muted; }
+  .pdf-setting-section legend { @apply float-left m-0 mb-3.5 w-full p-0 text-[13px] font-semibold; }
+  .pdf-setting-section legend+* { @apply clear-both; }
+  .pdf-radio { @apply m-0 mb-3 flex items-center gap-2.5 text-[13px] text-ink; }
+  .pdf-radio input { @apply size-3.5; }
+  .pdf-radio small { @apply ml-auto text-[11px] text-muted tabular-nums; }
+  .pdf-radio:has(input:disabled) { @apply opacity-55; }
+  .pdf-settings .pdf-field-label { @apply mt-4.5 mb-2 block text-xs text-muted; }
+  .pdf-settings .pdf-setting-section>.pdf-field-label:first-of-type { @apply mt-0; }
+  .pdf-settings input:not([type=radio]), .pdf-settings select { @apply h-[38px] w-full min-w-0 rounded-[7px] border border-control-line bg-panel px-2.5 text-xs text-ink; }
+  .pdf-settings input::placeholder { @apply text-muted opacity-100; }
+  .pdf-settings .pdf-range-row { @apply flex gap-2; }
+  .pdf-range-row button { @apply min-w-[52px] shrink-0 rounded-[7px] border border-control-line bg-panel text-xs text-ink hover:enabled:border-accent hover:enabled:text-accent; }
+  .pdf-settings .pdf-field-hint { @apply m-0 mt-2.5 text-[11px] leading-[1.8] text-muted; }
+  .pdf-settings .pdf-field-error { @apply m-0 mt-2.5 text-xs leading-[1.7] text-error; }
+  .pdf-settings input[aria-invalid=true] { @apply border-error; }
+  .pdf-filename-row { @apply relative flex items-center; }
+  .pdf-settings .pdf-filename-row input { @apply pr-11; }
+  .pdf-filename-row>span { @apply pointer-events-none absolute right-3 text-xs text-muted; }
+  .pdf-export-section { @apply p-5.5; }
+  .pdf-output-summary { @apply mb-3.5 flex items-center justify-between text-xs text-muted; }
+  .pdf-output-summary strong { @apply text-sm font-semibold text-ink tabular-nums; }
+  .pdf-export { @apply min-h-[43px] w-full justify-center; }
+  .pdf-export>svg:last-child:not(:first-child) { @apply ml-auto; }
+  .pdf-export>svg:first-child { @apply mr-auto; }
+  .pdf-safety-note { @apply flex gap-2.5 px-5.5 pb-6 text-muted; }
+  .pdf-safety-note svg { @apply mt-1 text-accent; }
+  .pdf-safety-note p { @apply m-0 text-[11px] leading-[1.8]; }
+  .pdf-selection-toolbar { @apply flex min-h-[52px] items-center justify-between gap-2.5 border-b border-line px-5 py-2; }
+  .pdf-selection-toolbar>label { @apply flex items-center gap-2 text-xs whitespace-nowrap text-muted; }
+  .pdf-selection-toolbar input, .pdf-page-top input { @apply size-[15px]; }
+  .pdf-batch-actions { @apply flex items-center gap-1; }
+  .pdf-batch-actions>button { @apply min-h-8 min-w-8 rounded-md px-2 py-1 text-xs text-ink hover:enabled:bg-accent-soft hover:enabled:text-accent; }
+  .pdf-toolbar-divider { @apply mx-1.5 h-[17px] w-px bg-line; }
+  .pdf-document-strip { @apply flex justify-between gap-3 px-5 pt-4 pb-0.5 text-[11px] text-muted tabular-nums; }
+  .pdf-document-strip>span:last-child { @apply text-right; }
+  .pdf-pages { @apply grid grid-cols-[repeat(auto-fill,minmax(155px,1fr))] content-start gap-4 px-5 pt-4.5 pb-6; }
+  .pdf-page { @apply min-w-0 overflow-hidden rounded-xl border border-line bg-panel p-2.5 transition-colors duration-150; }
+  .pdf-page.selected { @apply border-accent bg-accent-soft; }
+  .pdf-page.is-dragging { @apply opacity-50; }
+  .pdf-page-top { @apply mb-2 flex cursor-grab items-center justify-between text-muted; }
+  .pdf-page-top>label { @apply flex cursor-pointer items-center gap-2 text-[11px] text-ink tabular-nums; }
+  .pdf-preview-button { @apply relative w-full overflow-hidden rounded-md bg-canvas; }
+  .pdf-page-image { @apply flex h-[185px] w-full items-center justify-center overflow-hidden bg-canvas p-1.5; }
+  .pdf-page-image>img {
+    @apply block max-h-full max-w-full rounded border border-line bg-white object-contain;
+    box-shadow: 0 2px 6px rgba(20, 23, 31, 0.06);
+  }
+  .pdf-page-image>svg { @apply text-muted; }
+  .pdf-preview-failed { @apply flex flex-col items-center gap-2.5 text-[11px] text-muted; }
+  .pdf-zoom { @apply absolute bottom-2 left-1/2 flex min-w-16 -translate-x-1/2 items-center justify-center gap-1.5 rounded-md bg-panel px-2 py-1 text-[11px] text-ink opacity-0 transition-opacity duration-150; }
+  .pdf-preview-button:hover .pdf-zoom, .pdf-preview-button:focus-visible .pdf-zoom { @apply opacity-100; }
+  .pdf-page>p { @apply mt-2.5 mb-1 truncate text-[11px] font-medium text-ink; }
+  .pdf-source-page { @apply block text-[10px] text-muted tabular-nums; }
+  .pdf-page-actions { @apply mt-2.5 flex gap-1 border-t border-line pt-1.5; }
+  .pdf-page-actions button { @apply h-[30px] flex-1 rounded-[5px] text-muted hover:enabled:bg-accent-soft hover:enabled:text-accent; }
+  .pdf-page-actions button:last-child:hover:not(:disabled) { @apply text-error; }
+  .pdf-add-page { @apply flex min-h-[325px] flex-col gap-3 rounded-xl border border-dashed border-control-line bg-surface text-muted hover:enabled:border-accent hover:enabled:text-accent; }
+  .pdf-add-page strong { @apply text-xs font-medium text-ink; }
+  .pdf-add-page span { @apply text-[10px]; }
+  .pdf-errors { @apply mx-5 mt-4 flex items-start justify-between gap-3 rounded-lg border border-error bg-panel p-3.5 text-xs leading-[1.8] wrap-anywhere text-error; }
+  .pdf-errors ul { @apply m-0 mt-1 pl-4; }
+  .pdf-errors>button { @apply min-h-7 min-w-7 shrink-0; }
+  .pdf-progress { @apply mt-4; }
+  .pdf-progress>span { @apply block text-[11px] wrap-anywhere text-muted; }
+  .pdf-progress>progress { @apply my-2.5 block h-1.5 w-full accent-accent; }
+  .pdf-progress>button { @apply min-h-[34px] w-full text-xs text-muted underline underline-offset-3; }
+  .pdf-result { @apply mt-4.5 flex flex-col gap-2 rounded-[10px] border border-success-line bg-success-soft p-4 text-success; }
+  .pdf-result>strong { @apply flex items-center gap-1.5 text-xs font-semibold; }
+  .pdf-result>span { @apply text-xs wrap-anywhere; }
+  .pdf-result>small { @apply text-[11px] tabular-nums; }
+  .pdf-result>a { @apply mt-1.5 flex items-center justify-center gap-2 text-xs no-underline; }
+  .pdf-result p { @apply m-0 leading-[1.8] wrap-anywhere; }
+  .pdf-result>.pdf-inline-action { @apply mt-1 w-full rounded-[7px] border border-success-line bg-panel font-medium; }
+  .pdf-guide { @apply mt-5 scroll-mt-[90px] rounded-xl border border-line bg-surface; }
+  .pdf-guide summary { @apply cursor-pointer px-5 py-4 text-xs text-muted focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent; }
+  .pdf-guide details>div { @apply grid grid-cols-[1fr_1fr_1.25fr] gap-7.5 px-5.5 pt-2 pb-6; }
+  .pdf-guide h2 { @apply mb-2.5 flex items-center gap-2 text-[13px] font-semibold text-ink; }
+  .pdf-guide p { @apply mb-2.5 text-xs leading-[1.9] text-muted; }
+  .pdf-footer { @apply pt-5 pb-6 text-[11px]; }
+  .pdf-footer>span:last-child { @apply flex items-center gap-2; }
+  .pdf-sr-only { @apply sr-only; }
+  .pdf-spinner { animation: spin 1s linear infinite; }
+  .pdf-preview-dialog {
+    @apply m-auto max-h-[calc(100dvh-40px)] w-[min(880px,calc(100vw-32px))] rounded-[14px] border-0 bg-panel p-0 text-ink;
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.22);
+  }
+  .pdf-preview-dialog::backdrop { background: rgba(15, 18, 25, 0.65); }
+  .pdf-dialog-heading, .pdf-dialog-footer { @apply flex items-center justify-between gap-4 px-5 py-3 text-[13px]; }
+  .pdf-dialog-heading { @apply border-b border-line; }
+  .pdf-dialog-heading>button { @apply min-h-[34px] min-w-[34px]; }
+  .pdf-preview-content { @apply max-h-[calc(100dvh-190px)] overflow-auto bg-canvas p-5; }
+  .pdf-page-image.large { @apply h-auto min-h-[250px] bg-transparent; }
+  .pdf-page-image.large img { @apply max-h-none; }
+  .pdf-dialog-footer { @apply border-t border-line; }
+  .pdf-dialog-footer>span { @apply truncate text-[11px] text-muted; }
+  .pdf-dialog-footer>button { @apply min-h-9 shrink-0 text-xs text-accent; }
+  .pdf-settings .pdf-edit-field { @apply m-0 mb-4 flex flex-col gap-2 text-xs text-muted; }
+  .pdf-field-grid { @apply clear-both grid grid-cols-2 gap-3; }
+  .pdf-edit-tools .pdf-apply { @apply mt-4.5 min-h-10 w-full text-xs; }
+  .pdf-settings .pdf-duplex-reverse { @apply mt-4.5; }
+  .pdf-settings .pdf-duplex-reverse input { @apply size-3.5 shrink-0 p-0; }
+  .pdf-settings .pdf-document-consent { @apply mt-3.5 items-start leading-[1.8]; }
+  .pdf-settings .pdf-document-consent input { @apply mt-1 size-3.5 shrink-0 p-0; }
+  .pdf-duplex-preview { @apply clear-both mt-4 rounded-lg border border-line bg-panel px-3.5 py-3 text-[11px] leading-[1.8] wrap-anywhere; }
+  .pdf-duplex-preview strong { @apply font-semibold text-ink; }
+  .pdf-duplex-preview p { @apply m-0 mt-1.5 text-muted; }
+  .pdf-inline-action { @apply min-h-[34px] gap-1.5 text-xs font-medium text-accent; }
+  .pdf-blank-tag { @apply mt-1.5 inline-flex items-center rounded-full border border-warning-line bg-warning-soft px-2 py-0.5 text-[10.5px] font-medium text-warning; }
+  .pdf-blank-results { @apply mt-4 rounded-[9px] border border-line bg-panel px-3.5 py-3 text-xs leading-[1.8]; }
+  .pdf-blank-results>strong { @apply font-semibold text-ink; }
+  .pdf-blank-results>div { @apply mt-2 max-h-60 overflow-auto; }
+  .pdf-blank-result { @apply flex min-h-[38px] items-center justify-between gap-2 border-b border-line; }
+  .pdf-blank-result label { @apply flex items-center gap-2 text-ink; }
+  .pdf-settings .pdf-blank-result input { @apply size-3.5 p-0; }
+  .pdf-blank-result button { @apply min-h-[34px] text-[11px] text-accent; }
+  .pdf-delete-candidates { @apply mt-2.5 min-h-10 w-full rounded-[7px] border border-error bg-surface text-xs font-medium text-error; }
+  .pdf-sign-pad { @apply block h-auto w-full cursor-crosshair touch-none rounded-[7px] border border-control-line bg-white; }
+  .pdf-stamp-tools>.pdf-inline-action { @apply mt-1.5; }
+  .pdf-stamp-tools>[role=status] { @apply mt-2.5 mb-3.5 rounded-[7px] border border-accent-line bg-accent-soft px-2.5 py-1.5 font-medium text-accent; }
+  .pdf-stamp-placement {
+    @apply relative my-3.5 min-h-[60px] w-full cursor-crosshair touch-none overflow-hidden rounded-[7px] border border-line bg-white;
+    box-shadow: 0 2px 8px rgba(20, 23, 31, 0.05);
+  }
+  .pdf-stamp-placement>img:first-child { @apply block h-auto w-full; }
+  .pdf-stamp-placement>p { @apply px-3 py-5 text-xs text-muted; }
+  .pdf-stamp-placement>.pdf-stamp-overlay { @apply pointer-events-none absolute h-auto; }
+  .pdf-settings input[type=range] { @apply h-[22px] cursor-ew-resize border-0 bg-transparent p-0 accent-accent; }
+  .pdf-settings input[type=file] { @apply h-auto border-dashed bg-surface p-1.5 text-[11px]; }
+  .pdf-settings input[type=file]::file-selector-button { @apply mr-2 cursor-pointer rounded-[5px] border border-line bg-panel px-2.5 py-1 text-[11px] font-medium text-ink; }
+  .pdf-compare { @apply col-span-full min-w-0 bg-panel; }
+  .pdf-compare-controls { @apply mb-4 grid grid-cols-[1fr_1fr_180px] gap-4 border-b border-line bg-surface px-5.5 py-5; }
+  .pdf-compare-controls label, .pdf-compare-navigation label { @apply flex min-w-0 flex-col gap-2 text-xs text-muted; }
+  .pdf-compare select { @apply h-[38px] w-full min-w-0 rounded-[7px] border border-control-line bg-panel px-2.5 text-xs text-ink; }
+  .pdf-compare-note { @apply m-0 px-5.5 pb-4.5 text-xs leading-[1.8] wrap-anywhere text-muted; }
+  .pdf-compare-empty { @apply flex min-h-[350px] flex-col items-center justify-center gap-4 p-6 text-center; }
+  .pdf-compare-empty h3 { @apply m-0 text-xl; }
+  .pdf-compare-empty p { @apply m-0 text-xs text-muted; }
+  .pdf-compare-empty button { @apply min-h-10 px-5; }
+  .pdf-compare-navigation { @apply flex items-center justify-center gap-5 px-5.5 pb-5.5; }
+  .pdf-compare-navigation button { @apply min-h-10 shrink-0 text-xs font-medium whitespace-nowrap text-accent; }
+  .pdf-compare-navigation label { @apply flex-[0_1_180px]; }
+  .pdf-compare-missing { @apply text-warning; }
+  .pdf-compare-stage {
+    @apply relative mx-auto max-w-[780px] overflow-hidden rounded-lg border border-line bg-white;
+    box-shadow: 0 4px 16px rgba(20, 23, 31, 0.06);
+  }
+  .pdf-compare-stage img { @apply block size-full; }
+  .pdf-compare-stage img+img { @apply absolute inset-0; }
+  .pdf-compare-divider {
+    @apply pointer-events-none absolute top-0 bottom-0 w-0.5 bg-accent;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0 8px rgba(20, 23, 31, 0.28);
+  }
+  .pdf-compare-range { @apply mx-auto my-5 flex max-w-[780px] flex-col gap-3 px-5.5 text-xs text-muted; }
+  .pdf-compare-range input { @apply w-full accent-accent; }
+  .pdf-compare-side { @apply grid grid-cols-2 gap-5 px-5.5 pb-5.5; }
+  .pdf-compare-side figure { @apply m-0 min-w-0; }
+  .pdf-compare-side img {
+    @apply block max-h-[70dvh] w-full rounded-lg border border-line bg-white object-contain;
+    box-shadow: 0 2px 10px rgba(20, 23, 31, 0.05);
+  }
+  .pdf-compare-side figcaption { @apply mt-2.5 text-[11px] wrap-anywhere text-muted; }
+  .pdf-applied { @apply mx-5 mt-4 flex items-start gap-2 rounded-lg border border-success-line bg-success-soft px-3.5 py-3 text-xs leading-[1.8] text-success; }
+  .pdf-applied svg { @apply mt-1; }
+  .pdf-text-panel { @apply min-w-0 p-5; }
+  .pdf-text-search { @apply flex items-center gap-2.5 rounded-lg border border-control-line bg-panel px-3 text-muted focus-within:border-accent focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-accent; }
+  .pdf-text-search input { @apply h-10 w-full min-w-0 border-0 bg-transparent text-[13px] text-ink outline-none placeholder:text-muted placeholder:opacity-100 focus-visible:outline-none; }
+  .pdf-text-hint { @apply mt-3.5 mb-4 text-xs leading-[1.8] wrap-anywhere text-muted; }
+  .pdf-text-page { @apply mt-3.5 rounded-[10px] border border-line bg-surface px-4 pt-3 pb-3.5; }
+  .pdf-text-page>button { @apply mb-2.5 min-h-9 w-full justify-start border-b border-line pb-2 text-xs font-semibold text-accent; }
+  .pdf-text-page>button>span { @apply ml-auto text-[11px] font-medium; }
+  .pdf-text-page pre { @apply m-0 max-h-80 overflow-auto font-sans text-[13px] leading-[1.9] whitespace-pre-wrap wrap-anywhere text-ink focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent; }
+  .pdf-text-page mark { @apply rounded-[3px] bg-warning-soft px-1 py-px text-warning; }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 1040px) {
+  .tools-list { @apply grid-cols-2; }
+}
+
+@media (max-width: 1040px) and (min-width: 761px) {
+  .pdf-app .site-header { @apply gap-5; }
+  .pdf-app .site-header nav { @apply gap-4; }
+  .pdf-app .theme-picker button span { @apply hidden; }
+  .pdf-tool-tabs { @apply grid-cols-4; }
+  .pdf-workspace { @apply grid-cols-[minmax(0,1fr)_285px]; }
+  .pdf-pages { @apply grid-cols-[repeat(auto-fill,minmax(145px,1fr))] gap-3 p-4; }
+  .pdf-document-strip>span:last-child { @apply hidden; }
+}
 
 @media (max-width: 1024px) {
   .header, main { @apply px-6; }
@@ -424,6 +693,28 @@
   .home-format-list { @apply grid-cols-5; }
   .home-format-list a { @apply text-[10px]; }
   .home-guide { @apply grid-cols-1 gap-3 p-4; }
+  .tools-intro { @apply grid-cols-1 gap-5.5 pt-7 pb-6; }
+  .tools-intro h1>span { @apply inline; }
+  .tools-intro h1 { @apply text-[28px]; }
+  .tools-intro>div>p { @apply text-xs; }
+  .tools-principle { @apply px-5 py-4.5; }
+  .tools-principle>strong { @apply text-sm; }
+  .tools-intro .tools-principle>p { @apply text-[11.5px]; }
+  .tools-principle>span { @apply mt-2.5 text-[10px]; }
+  .tools-directory { @apply px-4 pt-4.5 pb-5; }
+  .tools-directory-heading { @apply flex-col items-stretch gap-3.5; }
+  .tools-directory h2 { @apply text-[17px]; }
+  .tools-search { @apply w-full; }
+  .tools-filter { @apply mt-4; }
+  .tools-list { @apply mt-4 grid-cols-1 gap-2.5; }
+  .tools-entry { @apply min-h-[82px] gap-3 p-3.5; }
+  .tools-entry p { @apply text-[11.5px]; }
+  .tools-guide { @apply pt-6.5; }
+  .tools-guide>div { @apply grid-cols-1 gap-3; }
+  .tools-guide article { @apply px-4.5 py-4; }
+  .tools-guide p { @apply max-w-[45ch]; }
+  .tools-faq { @apply px-4 py-3.5; }
+  .tools-home footer { @apply flex-col gap-2; }
   .header { @apply h-[68px] gap-3 px-4; }
   .brand { @apply text-[18px]; }
   .brand-symbol { @apply size-7; }
@@ -469,6 +760,58 @@
   .format-table>div { @apply grid-cols-[1fr_48px_48px] px-3; }
   .format-table small { @apply ml-0 mt-1 block; }
   .guide article p { @apply text-xs; }
+  .pdf-intro { @apply gap-3 pt-5; }
+  .pdf-intro h1 { @apply text-[25px]; }
+  .pdf-intro p { @apply max-w-[36ch] text-xs; }
+  .pdf-private { @apply text-[11px]; }
+  .pdf-tool-tabs { @apply mb-3.5 grid-cols-3 gap-1 p-1.5; }
+  .pdf-tool-tabs>button { @apply min-h-9 justify-center gap-1 px-1.5 py-1 text-center text-[11px] whitespace-normal; }
+  .pdf-tool-tabs>button svg { @apply w-[13px]; }
+  .pdf-workspace { @apply grid-cols-1; }
+  .pdf-main { @apply min-h-[430px]; }
+  .pdf-empty { @apply m-3.5 min-h-[350px] px-3 py-6; }
+  .pdf-empty h2 { @apply text-lg; }
+  .pdf-empty>p { @apply text-xs; }
+  .pdf-empty .drop-hint { @apply max-w-[28ch] text-[10px]; }
+  .pdf-pages { @apply grid-cols-2 gap-2.5 p-3.5; }
+  .pdf-page { @apply p-2; }
+  .pdf-page-image { @apply h-[170px]; }
+  .pdf-page-actions { @apply gap-px; }
+  .pdf-page-actions button { @apply h-9 min-w-7; }
+  .pdf-add-page { @apply min-h-[320px]; }
+  .pdf-selection-toolbar { @apply gap-1 px-3 py-2; }
+  .pdf-batch-actions { @apply gap-0; }
+  .pdf-batch-actions>button { @apply min-w-8 p-1.5 text-[11px]; }
+  .pdf-toolbar-divider { @apply mx-0.5; }
+  .pdf-document-strip { @apply px-3.5 pt-3.5 pb-0; }
+  .pdf-document-strip>span:last-child { @apply hidden; }
+  .pdf-errors, .pdf-applied { @apply mx-3.5 mt-3.5; }
+  .pdf-guide details>div { @apply grid-cols-1 gap-3.5 px-4.5 pt-2 pb-4.5; }
+  .pdf-footer { @apply flex-col gap-2.5; }
+  .pdf-dialog-heading, .pdf-dialog-footer { @apply px-3 py-2.5; }
+  .pdf-preview-content { @apply p-3; }
+  .pdf-settings .pdf-setting-section { @apply p-5; }
+  .pdf-compare .panel-heading { @apply h-auto min-h-14 flex-wrap gap-3 px-4 py-3.5; }
+  .pdf-compare .panel-heading h2 { @apply m-0; }
+  .pdf-compare .toolbar { @apply ml-auto; }
+  .pdf-compare .toolbar button { @apply whitespace-nowrap; }
+  .pdf-compare-controls { @apply grid-cols-1 gap-3 p-4; }
+  .pdf-compare-note { @apply px-4 pb-4; }
+  .pdf-compare-navigation { @apply gap-2.5 px-4 pb-4; }
+  .pdf-compare-side { @apply grid-cols-1 px-4 pb-4; }
+  .pdf-text-panel { @apply p-3.5; }
+}
+
+@media (max-width: 360px) {
+  .pdf-tool-tabs { @apply grid-cols-2; }
+  .pdf-main .panel-heading { @apply gap-1 px-3; }
+  .pdf-main .toolbar { @apply gap-0.5; }
+  .pdf-main .toolbar>button { @apply p-1.5; }
+  .pdf-selection-toolbar { @apply flex-wrap gap-1.5 px-2.5 py-2; }
+  .pdf-batch-actions { @apply ml-auto; }
+  .pdf-page-actions button { @apply min-w-[22px]; }
+  .pdf-page-image { @apply h-[145px]; }
+  .pdf-add-page { @apply min-h-[295px]; }
 }
 
 @media (prefers-reduced-motion: reduce) {

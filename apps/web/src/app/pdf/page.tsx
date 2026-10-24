@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { PdfApp } from '../../pdf/PdfApp';
-import '../../pdf/pdf.css';
 
 export const metadata: Metadata = {
   title: 'FolioForge 页匠 · 离线 PDF 工作台',
