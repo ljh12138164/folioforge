@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { downloadAsset } from './download-asset.mjs';
 
 const require = createRequire(import.meta.url);
 const target = fileURLToPath(new URL('../public/pdf-assets/ocr/v7/', import.meta.url));
@@ -30,10 +31,7 @@ for (const name of ['chi_sim.traineddata', 'eng.traineddata', 'LICENSE']) {
   let bytes;
   try { bytes = await readFile(path); } catch {}
   if (!bytes || createHash('sha256').update(bytes).digest('hex') !== hashes[name]) {
-    const response = await fetch(base + name);
-    if (!response.ok) throw new Error(`OCR asset download failed: ${name} (${response.status})`);
-    bytes = Buffer.from(await response.arrayBuffer());
-    if (createHash('sha256').update(bytes).digest('hex') !== hashes[name]) throw new Error(`OCR asset checksum mismatch: ${name}`);
+    bytes = await downloadAsset(base + name, hashes[name]);
     await writeFile(path, bytes);
   }
   manifest[name] = { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };

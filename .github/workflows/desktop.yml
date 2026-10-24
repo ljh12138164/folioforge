@@ -2,11 +2,16 @@ name: Desktop compatibility
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: desktop-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   desktop:
@@ -23,6 +28,9 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
+      - name: Install Electron binary before resolving its path
+        working-directory: apps/desktop
+        run: node -e "require('electron')"
       - run: pnpm --filter @pixelforge/web exec playwright install --with-deps chromium
       - if: runner.os == 'Linux'
         name: Install Linux desktop test dependencies
@@ -31,19 +39,29 @@ jobs:
         name: Configure Electron sandbox helper
         working-directory: apps/desktop
         run: |
-          sandbox="$(node -p "require('node:path').join(require('node:path').dirname(require('electron')), 'chrome-sandbox')")"
+          sandbox="$(node -p "require('node:path').join(require('node:path').dirname(require.resolve('electron')), 'dist', 'chrome-sandbox')")"
           sudo chown root:root "$sandbox"
           sudo chmod 4755 "$sandbox"
       - run: pnpm check
-      - name: Test renderer and image engine
+      - run: pnpm --filter @pixelforge/image-engine test
+      - name: Cache verified OCR models
+        uses: actions/cache@v4
+        continue-on-error: true
+        with:
+          path: apps/web/public/pdf-assets/ocr/v7/lang
+          key: ocr-models-${{ hashFiles('apps/web/scripts/prepare-ocr-assets.mjs') }}
+      - run: pnpm --filter @pixelforge/web build
+      - name: Test Web renderer
+        run: pnpm --filter @pixelforge/web test
+      - name: Test desktop application
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            xvfb-run -a pnpm test
+            xvfb-run -a pnpm --filter @pixelforge/desktop test
           else
-            pnpm test
+            pnpm --filter @pixelforge/desktop test
           fi
-      - run: pnpm desktop:package
+      - run: pnpm --filter @pixelforge/desktop package
       - if: runner.os == 'Linux'
         name: Configure packaged sandbox helper
         run: |
@@ -59,8 +77,10 @@ jobs:
           fi
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true # Evidence upload must not replace the test verdict when account storage is full.
         with:
           name: desktop-evidence-${{ matrix.os }}
+          retention-days: 3
           path: |
             apps/desktop/work/smoke/*.png
             apps/desktop/work/packaged-smoke/*.png

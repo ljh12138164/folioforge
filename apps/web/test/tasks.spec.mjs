@@ -104,7 +104,16 @@ test('persistent queue: pause, reload, resume, cancel and storage failure', asyn
 
   await conversions();
   await js(`new Promise(resolve => {
-    const timer=setInterval(() => { if(document.querySelector('.status-working')) { clearInterval(timer); resolve(); } },1);
+    // Keep a real conversion in flight even if encoding finishes before the reload command arrives.
+    const send = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function(...args) {
+      if (args[0]?.options) {
+        const receive = this.onmessage, id = args[0].id;
+        this.onmessage = event => { if (event.data.id !== id) receive?.call(this, event); };
+        const result = send.apply(this, args); resolve(); return result;
+      }
+      return send.apply(this, args);
+    };
     document.querySelector('.convert-button').click();
   })`);
   await reload();
