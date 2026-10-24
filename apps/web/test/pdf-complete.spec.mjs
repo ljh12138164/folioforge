@@ -77,8 +77,13 @@ test('image signatures land at real visible coordinates for all rotations and Us
     await range.fill(String(value));
   }
   await page.getByRole('button', { name: '应用到 4 页', exact: true }).click();
-  await expect(page.locator('.pdf-applied')).toBeVisible(); await expect(page.locator('.pdf-page-image img')).toHaveCount(4);
-  await expect.poll(() => page.locator('.pdf-page-image img').evaluateAll(imgs => imgs.length === 4 && imgs.every(img => img.complete && img.naturalWidth > 0))).toBe(true);
+  await expect(page.locator('.pdf-applied')).toBeVisible();
+  // Thumbnails load only near the viewport; applying the stamp may scroll them out of view.
+  for (let index = 0; index < 4; index++) {
+    const preview = page.locator('.pdf-page-image').nth(index);
+    await preview.scrollIntoViewIfNeeded();
+    await expect.poll(() => preview.locator('img').evaluateAll(imgs => imgs.length === 1 && imgs[0].complete && imgs[0].naturalWidth > 0)).toBe(true);
+  }
   const positions = await page.locator('.pdf-page-image img').evaluateAll(imgs => imgs.map(img => {
     const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
     const pixels = ctx.getImageData(0, 0, c.width, c.height).data; let n = 0, x = 0, y = 0;

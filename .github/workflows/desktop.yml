@@ -44,6 +44,12 @@ jobs:
           sudo chmod 4755 "$sandbox"
       - run: pnpm check
       - run: pnpm --filter @pixelforge/image-engine test
+      - name: Cache verified OCR models
+        uses: actions/cache@v4
+        continue-on-error: true
+        with:
+          path: apps/web/public/pdf-assets/ocr/v7/lang
+          key: ocr-models-${{ hashFiles('apps/web/scripts/prepare-ocr-assets.mjs') }}
       - run: pnpm --filter @pixelforge/web build
       - name: Test Web renderer
         run: pnpm --filter @pixelforge/web test
