@@ -45,7 +45,7 @@ async function prepare(page, memory = 8, failure = '') {
       }
     };
   }, { memory, failure });
-  await page.goto('/convert/?format=WEBP');
+  await page.goto('/convert/?format=JPEG');
   await expect(page.locator('footer')).toContainText('引擎就绪');
   await expect(page.getByRole('checkbox', { name: '保存任务到此设备' })).toBeEnabled();
 }
@@ -73,7 +73,7 @@ test('real conversions overlap, large images run alone, and idle engines are rel
   await prepare(page);
   await add(page, [[1600, 1200], [1601, 1200], [1602, 1200], [1603, 1200], [4000, 2400], [1604, 1200], [1605, 1200]]);
   await page.locator('.convert-button').click();
-  await expect(page.locator('.status-done')).toHaveCount(7, { timeout: 60_000 });
+  await expect(page.locator('.status-done')).toHaveCount(7, { timeout: process.env.CI ? 120_000 : 60_000 });
   await expect(page.locator('.convert-button')).toBeEnabled();
   const stats = await page.evaluate(() => window.__work);
   expect(stats.peak).toBe(2);

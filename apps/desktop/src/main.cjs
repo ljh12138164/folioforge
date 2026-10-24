@@ -1,7 +1,8 @@
 const { app, BrowserWindow, ipcMain, Menu, nativeTheme, net, protocol, session } = require('electron');
 const { stat } = require('node:fs/promises');
-const { resolve, relative, isAbsolute, join, sep, basename } = require('node:path');
+const { resolve, join, basename } = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { assetPath } = require('./asset-path.cjs');
 
 if (process.argv.includes('--smoke-test')) require('../test/smoke.cjs');
 
@@ -32,9 +33,8 @@ app.whenReady().then(async () => {
     try {
       const url = new URL(request.url);
       if (url.host !== 'app' || !['GET', 'HEAD'].includes(request.method)) return new Response('Forbidden', { status: 403 });
-      let file = resolve(root, '.' + decodeURIComponent(url.pathname));
-      const localPath = relative(root, file);
-      if (isAbsolute(localPath) || localPath === '..' || localPath.startsWith('..' + sep)) return new Response('Forbidden', { status: 403 });
+      let file = assetPath(root, url.pathname);
+      if (!file) return new Response('Forbidden', { status: 403 });
       if ((await stat(file)).isDirectory()) file = join(file, 'index.html');
       const result = await net.fetch(pathToFileURL(file).toString());
       const headers = new Headers(result.headers);
