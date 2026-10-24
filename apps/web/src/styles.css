@@ -220,8 +220,6 @@
   }
   .source-image { @apply relative z-1 size-full object-contain; }
   .preview-fallback { @apply absolute inset-0 flex flex-col items-center justify-center gap-3 text-center text-xs leading-6 text-muted; }
-  .compare-images { @apply relative size-full; }
-  .compare-images>img { @apply absolute inset-0 size-full object-contain; }
   .compare-label {
     @apply pointer-events-none absolute top-3 z-2 rounded-md border border-line/80 bg-panel/90 px-2.5 py-1 text-[11px] font-medium text-ink backdrop-blur-md;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -236,8 +234,6 @@
     @apply absolute top-1/2 left-0 grid size-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-line bg-panel text-accent;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
   }
-  .compare-images>input { @apply absolute inset-0 z-3 m-0 size-full cursor-ew-resize opacity-0; }
-  .compare-images:focus-within { @apply outline-2 -outline-offset-2 outline-accent; }
   .working-overlay { @apply absolute inset-0 z-5 flex items-center justify-center gap-3 bg-overlay text-sm font-medium text-accent backdrop-blur-xs; }
 
   .file-list { @apply flex max-h-60 flex-col gap-1.5 overflow-auto px-6 py-1; }
@@ -644,6 +640,36 @@
   .pdf-text-page>button>span { @apply ml-auto text-[11px] font-medium; }
   .pdf-text-page pre { @apply m-0 max-h-80 overflow-auto font-sans text-[13px] leading-[1.9] whitespace-pre-wrap wrap-anywhere text-ink focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent; }
   .pdf-text-page mark { @apply rounded-[3px] bg-warning-soft px-1 py-px text-warning; }
+
+  .image-comparison { @apply mx-6 mb-4 min-w-0 overflow-hidden rounded-xl border border-line bg-panel; }
+  .image-compare-toolbar { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-3 py-2; }
+  .image-compare-toolbar>strong { @apply flex items-center gap-2 text-xs font-medium text-ink; }
+  .image-zoom-controls { @apply flex flex-wrap items-center gap-1; }
+  .image-zoom-controls button { @apply min-h-8 min-w-8 rounded-md border border-transparent px-1.5 text-xs text-muted hover:bg-surface hover:text-ink; }
+  .image-zoom-controls button[aria-pressed="true"] { @apply border-accent-line bg-accent-soft text-accent; }
+  .image-zoom-controls output { @apply min-w-11 text-center font-mono text-xs text-ink tabular-nums; }
+  .image-compare-stage { @apply relative isolate h-[clamp(300px,48vh,520px)] w-full cursor-grab touch-none overflow-hidden select-none; }
+  .image-compare-stage.is-dragging { @apply cursor-grabbing; }
+  .image-compare-layer { @apply pointer-events-none absolute inset-0; }
+  .image-compare-layer img { @apply absolute max-w-none -translate-x-1/2 -translate-y-1/2; }
+  .image-side-label { @apply pointer-events-none absolute top-3 z-2 rounded-md border border-line bg-panel px-2 py-1 text-[11px] font-medium text-ink; }
+  .image-side-before { @apply left-3; }
+  .image-side-after { @apply right-3; }
+  .image-compare-handle { @apply absolute inset-y-0 z-3 w-10 -translate-x-1/2 cursor-ew-resize touch-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent; }
+  .image-compare-handle::before { @apply absolute inset-y-0 left-1/2 w-0.5 bg-panel content-['']; box-shadow: 0 0 0 1px var(--color-control-line); }
+  .image-compare-handle>span { @apply absolute top-1/2 left-1/2 grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-control-line bg-panel text-accent; box-shadow: 0 2px 8px #0003; }
+  .image-compare-sizes { @apply grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-t border-line px-3 py-3; }
+  .image-compare-sizes>div { @apply flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1; }
+  .image-compare-sizes>div:last-child { @apply justify-end text-right; }
+  .image-compare-sizes span, .image-compare-sizes small { @apply text-[11px] text-muted; }
+  .image-compare-sizes strong { @apply font-mono text-sm font-semibold text-ink tabular-nums; }
+  .image-compare-sizes small { @apply basis-full font-mono tabular-nums; }
+  .image-compare-sizes .image-size-change { @apply text-xs font-medium text-success; }
+  .image-compare-sizes .image-size-change.larger { @apply text-warning; }
+  .image-compare-hint { @apply border-t border-line px-3 py-2 text-[11px] leading-5 text-muted; }
+  .image-compare-error { @apply px-3 py-2 text-xs leading-5 text-error; }
+  .image-comparison:fullscreen { @apply m-0 flex size-full flex-col rounded-none border-0; }
+  .image-comparison:fullscreen .image-compare-stage { @apply h-auto min-h-0 flex-1; }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -741,7 +767,6 @@
   .preview { @apply mx-4 h-[260px]; }
   .preview-toolbar { @apply px-4 text-[11px]; }
   .file-list { @apply px-4; }
-  .preview.has-result { @apply h-auto min-h-32 max-h-[340px]; }
   .file-row { @apply gap-1 px-2.5; }
   .file-select { @apply gap-2; }
   .file-info>strong { @apply text-xs; }
@@ -800,6 +825,13 @@
   .pdf-compare-navigation { @apply gap-2.5 px-4 pb-4; }
   .pdf-compare-side { @apply grid-cols-1 px-4 pb-4; }
   .pdf-text-panel { @apply p-3.5; }
+  .image-comparison { @apply mx-3; }
+  .image-compare-toolbar { @apply items-start; }
+  .image-zoom-controls { @apply w-full justify-between gap-0; }
+  .image-zoom-controls button { @apply min-h-10 min-w-7 px-1 text-[11px]; }
+  .image-zoom-controls output { @apply min-w-9; }
+  .image-compare-stage { @apply h-80; }
+  .image-compare-sizes { @apply px-2.5; }
 }
 
 @media (max-width: 360px) {

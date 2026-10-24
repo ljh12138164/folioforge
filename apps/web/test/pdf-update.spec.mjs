@@ -11,7 +11,7 @@ test('online reload uses the current PDF page while offline reload retains its c
     await cache.put('/pdf/', new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><h1>缓存旧页面</h1></html>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
   });
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('把每一页');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('PDF 工作台');
   await expect(page.getByRole('button', { name: '扫描件 OCR', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '压缩 PDF', exact: true })).toBeVisible();
   await context.setOffline(true);

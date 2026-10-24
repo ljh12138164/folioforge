@@ -408,8 +408,7 @@ export function PdfApp() {
     <SiteHeader active="pdf" onHelp={() => document.getElementById('pdf-guide')?.scrollIntoView({ behavior: 'smooth' })} />
     <main>
       <section className="intro pdf-intro">
-        <div><h1>把每一页，<span>安排妥当。</span></h1><p>在本地完成页面整理、加印、排版、OCR 识别与体积压缩，文件不上传服务器。</p></div>
-        <span className="pdf-private"><ShieldCheck size={15} />无需上传 · 无需注册</span>
+        <div><h1>PDF <span>工作台</span></h1><p>合并、拆分、签名、排版、OCR 识别与体积压缩。</p></div>
       </section>
       <div className="pdf-tool-tabs" role="group" aria-label="PDF 工具">
         {modes.map(({ id, label, icon: Icon }) => <button key={id} aria-pressed={mode === id} onClick={() => chooseMode(id)} disabled={!!busy}><Icon size={16} />{label}</button>)}
@@ -458,10 +457,10 @@ export function PdfApp() {
             {history.past.length ? <button className="pdf-empty-undo" disabled={!!busy} onClick={() => undo()}><Undo2 size={14} />撤销删除</button> : <div className="sample-line">想先试试看？<button disabled={!!busy} onClick={() => void sample()}>载入示例文档<ArrowRight size={12} /></button></div>}
             <span className="drop-hint">单个文件 ≤ 40 MiB · 总计 ≤ 100 MiB · 最多 200 页</span>
           </div>}
-          <div className="workspace-bottom"><span><LockKeyhole size={13} />文件只在当前浏览器内处理</span><span>刷新或关闭页面将清空任务</span></div>
+          <div className="workspace-bottom"><span>支持拖入多份 PDF 或 PNG / JPG 图片</span><span>支持最近 20 步撤销与重做</span></div>
         </section>
         <aside className="settings pdf-settings" aria-label="导出设置">
-          <div className="panel-heading"><h2>导出设置</h2><span className="pdf-local-tag">本地处理</span></div>
+          <div className="panel-heading"><h2>导出设置</h2><span className="settings-dot" /></div>
           <div className="pdf-setting-section"><h3>{selectedMode.label}</h3><p>{selectedMode.detail}</p></div>
           {mode !== 'duplex' && <fieldset className="pdf-setting-section" disabled={!!busy}>
             <legend>页面范围</legend>
@@ -494,12 +493,11 @@ export function PdfApp() {
             {!!busy && <div className="pdf-progress" role="status"><span>{busy}</span><progress value={progress} max={100} aria-label="处理进度" /><button onClick={cancel}>取消操作</button></div>}
             {result && <div className="pdf-result" role="status"><strong><Check size={15} />导出完成</strong><span title={result.name}>{result.name}</span><small>{result.count} 页 · {bytesLabel(result.size)}</small>{result.before !== undefined && <small>处理前 {result.before.toLocaleString()} 字节 → 处理后 {result.size.toLocaleString()} 字节</small>}{result.note && <p>{result.note}</p>}{result.pdf && <button className="pdf-inline-action" onClick={() => setOutputPreview(true)}><ZoomIn size={14} />预览结果首页</button>}<a className="primary" href={result.url} download={result.name}><Download size={15} />下载结果</a></div>}
           </div>
-          <div className="pdf-safety-note"><ShieldCheck size={16} /><p>无需上传文件。任务仅保存在内存中，离开前请下载结果。</p></div>
         </aside>
         </>}
       </div>
-      <section className="pdf-guide" id="pdf-guide" aria-label="使用指南与功能说明"><details><summary>使用指南与支持范围</summary><div><article><h2><Layers size={16} />整理与转换</h2><p>导入多份 PDF 后，所有页面按添加顺序排列。可拖拽或使用前移、后移按钮调整顺序；勾选页面后可批量旋转或删除，并支持最近 20 步撤销与重做。导入的 PNG / JPG 图片会居中排入 A4 页面，手机拍摄的照片建议先在图片工作台转正。</p></article><article><h2><CheckCheck size={16} />导出与识别</h2><p>提取模式只导出勾选的页面。拆分模式将每页单独存为 PDF，转图片模式按当前旋转角度渲染页面，两者均打包为 ZIP 下载。页码范围（如 1-3, 5）对应工作区当前排列顺序。OCR 支持导出中英文 TXT 或可搜索 PDF；压缩支持无损重存与有损扫描件降采样，导出前请留意对应说明。</p></article><article><h2><ShieldCheck size={16} />离线与支持边界</h2><p>首次联网打开生产版并显示“离线资源已就绪”后，含中英文 OCR 模型在内的功能均可断网使用。缓存仅保存程序资源，不存储你的文档；清理浏览器网站数据后需重新联网缓存。请通过 HTTPS 或 localhost 访问，不支持直接双击打开 HTML 文件。</p><p>仅支持静态 PDF，不支持加密文档、交互表单与数字签名字段，也不提供正文编辑、PDF 加密或内容脱敏；页面重组可能丢失书签与文档级附件。OCR 结果可能存在识别误差，有损压缩会移除原有文字层与链接，重要文档请保留原件。</p></article></div></details></section>
-      <footer className="pdf-footer"><span>FolioForge 页匠 · PDF 工作台</span><span role="status"><span className="live-dot" />{offline}</span></footer>
+      <section className="pdf-guide" id="pdf-guide" aria-label="使用指南与功能说明"><details><summary>使用指南与支持范围</summary><div><article><h2><Layers size={16} />页面整理</h2><p>导入多份 PDF 或 PNG / JPG 图片后，可拖拽卡片或使用上下箭头调整顺序，勾选页面后批量旋转或删除，支持 20 步撤销与重做。</p></article><article><h2><CheckCheck size={16} />导出与识别</h2><p>支持按页码范围（如 1-3, 5）提取、单页拆分打包 ZIP、批量转图片、中英文扫描件 OCR（导出 TXT 或可搜索 PDF）以及体积压缩。</p></article><article><h2><ShieldCheck size={16} />支持范围</h2><p>单个文件 ≤ 40 MiB，总计 ≤ 100 MiB，最多 200 页。不支持密码加密文档、交互表单与数字签名字段；有损压缩会移除原有文字层与链接。</p></article></div></details></section>
+      <footer className="pdf-footer"><span>FolioForge · 页匠</span><span role="status"><span className="live-dot" />{offline}</span></footer>
     </main>
     <span className="pdf-sr-only" aria-live="polite">{announcement}</span>
     <dialog ref={outputDialog} className="pdf-preview-dialog" onCancel={() => setOutputPreview(false)} onClick={event => { if (event.target === event.currentTarget) setOutputPreview(false); }} aria-label="PDF 输出预览">

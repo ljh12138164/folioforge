@@ -47,8 +47,8 @@ export function Home() {
     <SiteHeader active="images" />
     <main className="home-main">
       <section className="home-intro">
-        <h1>在本地转换图片格式</h1>
-        <p>支持 14 种格式导出，可批量调整编码质量与最大尺寸，图片在浏览器内直接处理。</p>
+        <h1>图片格式转换</h1>
+        <p>支持 WebP、AVIF、JPG、PNG 等 14 种格式导出，可批量调整画质与尺寸。</p>
         <div className="home-actions"><button className="primary" type="submit" form="home-settings" disabled={busy}><Images size={18} />开始转换<ArrowRight size={16} /></button><button className="secondary" disabled={busy} onClick={previewSample}>{busy ? <LoaderCircle size={17} className="spin" /> : <Play size={17} />}{busy ? '正在转换示例' : result ? '重新转换示例' : '试用示例'}</button></div>
       </section>
 
@@ -59,7 +59,7 @@ export function Home() {
           <span className="compare-label label-before">{result ? '原图' : '示例图片'}</span><span className="compare-label label-after">{result ? `转换结果 · ${result.label}` : '点击「试用示例」查看结果'}</span>
           <div className="compare-divider" style={{ left: `${split}%` }}><span><MoveHorizontal size={16} /></span></div>
           <input aria-label="拖动以对比示例转换效果" type="range" min="0" max="100" value={split} onChange={(event) => setSplit(Number(event.target.value))} />
-          {busy && <div className="home-demo-loading" role="status"><LoaderCircle size={18} className="spin" />正在本地转换示例…</div>}
+          {busy && <div className="home-demo-loading" role="status"><LoaderCircle size={18} className="spin" />正在转换示例…</div>}
         </div>
         <form id="home-settings" className="home-settings" action="/convert/" method="get">
           <fieldset disabled={busy}><legend className="sr-only">转换设置</legend><span>选择格式</span><div className="home-format-options">{outputFormats.slice(0, 4).map((item) => <label key={item.id} className={format === item.id ? 'chosen' : ''}><input type="radio" name="format" value={item.id} checked={format === item.id} onChange={() => setFormat(item.id)} />{item.label}{format === item.id && <Check size={13} />}</label>)}</div></fieldset>
@@ -77,7 +77,7 @@ export function Home() {
         <p><Info size={15} />HEIC / HEIF、SVG 仅支持导入。仅处理静态图片；PSD 只保留合成图。</p>
       </section>
       <section className="home-guide" id="guide"><h2>批量处理说明</h2><div><p>在转换工作台中可一次添加多张图片，统一设置目标格式、编码质量和最大宽高。转换完成后可单张下载，也可打包为 ZIP。</p><p>单张图片上限为 40 MB、4800 万像素。开启本机任务保存后，重开页面仍可继续；未开启时关闭页面会清空列表。</p><a href="/convert/">进入转换工作台<ArrowRight size={16} /></a></div></section>
-      <footer><span>FolioForge 页匠 · 本地图片工具</span><span>图片无需上传</span></footer>
+      <footer><span>FolioForge · 页匠</span><span>支持 14 种图片格式</span></footer>
     </main>
   </div>;
 }

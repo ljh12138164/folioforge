@@ -11,9 +11,8 @@ export function DocumentTools({ mode, ocr, compression, busy, onOcr, onCompressi
     <label className="pdf-edit-field">OCR 输出<select value={ocr.format} onChange={e => onOcr({ ...ocr, format: e.target.value })}><option value="txt">文字 TXT</option><option value="pdf">可搜索 PDF</option></select></label>
     <label className="pdf-edit-field">识别清晰度<select value={ocr.dpi} onChange={e => onOcr({ ...ocr, dpi: Number(e.target.value) })}><option value="150">150 DPI · 较省内存</option><option value="200">200 DPI · 更精细</option></select></label>
     <label className="pdf-radio pdf-document-consent"><input type="checkbox" checked={ocr.force} onChange={e => onOcr({ ...ocr, force: e.target.checked })} /><span>重新识别已有文字的页面</span></label>
-    <p className="pdf-field-hint">默认沿用已有文字，避免重复文字层。每批最多 20 页，手机建议 1–3 页；单页限 3000px / 400 万像素，超出时会降低实际 DPI。</p>
-    <p className="pdf-field-hint">中英文模型随应用缓存，无需上传。识别结果可能出错，表格、竖排、小字与倾斜扫描需人工核对。</p>
-    {ocr.format === 'pdf' && <p className="pdf-field-hint">需要识别的页面会重建为图片加可搜索文字，保留可见尺寸；原矢量、链接、注释和标签不保留。已有文字页默认原样复制。</p>}
+    <p className="pdf-field-hint">默认保留已有文字层。单次最多识别 20 页，单页上限 3000px / 400 万像素。</p>
+    {ocr.format === 'pdf' && <p className="pdf-field-hint">扫描页将重建为带隐藏文字层的可搜索页面，已有文字页原样保留。</p>}
   </fieldset>;
   if (mode !== 'compress') return null;
   return <fieldset className="pdf-setting-section pdf-edit-tools" disabled={busy}>

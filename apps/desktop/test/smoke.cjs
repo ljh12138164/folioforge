@@ -41,16 +41,16 @@ app.once('browser-window-created', (_event, window) => {
       assert.equal(await js('typeof window.require'), 'undefined');
       assert.equal(await js('typeof window.process'), 'undefined');
       assert.equal(await js('isSecureContext'), true);
-      await waitFor("document.querySelector('h1')?.textContent === '文件处理，就在本机。'");
+      await waitFor("document.querySelector('h1')?.textContent === 'PDF 与图片工具箱'");
       assert.equal(await js("document.querySelectorAll('.tools-entry').length"), 21);
       await capture('desktop-tools.png');
       await window.loadURL('pixelforge://app/pdf/');
-      await waitFor("document.querySelector('h1')?.textContent === '把每一页，安排妥当。'");
+      await waitFor("document.querySelector('h1')?.textContent === 'PDF 工作台'");
       await js("[...document.querySelectorAll('button')].find(b => b.textContent.includes('载入示例文档')).click()");
       await waitFor("[...document.querySelectorAll('.pdf-page-image img')].length === 3 && [...document.querySelectorAll('.pdf-page-image img')].every(i => i.complete && i.naturalWidth > 0)");
       await capture('desktop-pdf.png');
       await window.loadURL('pixelforge://app/images/');
-      await waitFor("document.querySelector('h1')?.textContent === '在本地转换图片格式'");
+      await waitFor("document.querySelector('h1')?.textContent === '图片格式转换'");
       await js("new Promise((resolve, reject) => { const request = indexedDB.deleteDatabase('pixelforge-tasks'); request.onsuccess = resolve; request.onerror = () => reject(request.error); })");
       await js("[...document.querySelectorAll('button')].find(b => b.textContent === '试用示例').click()");
       await waitFor("[...document.querySelectorAll('img')].some(i => i.alt === '示例图片的实际转换结果' && i.naturalWidth > 0)");
@@ -66,7 +66,7 @@ app.once('browser-window-created', (_event, window) => {
       await waitFor("document.querySelector('.file-info strong')?.textContent === '示例-山景.png'");
       await js("document.querySelector('.convert-button').click()");
       await waitFor("!!document.querySelector('button[aria-label=\"下载 示例-山景.avif\"]')");
-      await waitFor("[...document.querySelectorAll('.compare-images img')].every(i => i.complete && i.naturalWidth > 0)");
+      await waitFor("document.querySelectorAll('.image-compare-layer img').length === 2 && [...document.querySelectorAll('.image-compare-layer img')].every(i => i.complete && i.naturalWidth > 0)");
       const avif = await download('result.avif', "document.querySelector('button[aria-label=\"下载 示例-山景.avif\"]').click()");
       assert.ok(avif.subarray(0, 40).includes(Buffer.from('ftypavif')));
       const zip = await download('results.zip', "document.querySelector('.download-bar button').click()");

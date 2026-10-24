@@ -37,11 +37,11 @@ export function PdfCompare({ sources, pages, renderer, busy, onAdd, onClear, onC
   }, [left, right, a, b, valid, renderer]);
   const choose = (side: 'left' | 'right', value: string) => { (side === 'left' ? setLeftId : setRightId)(value); setIndex(0); };
   return <section className="pdf-compare" aria-label="PDF 视觉对比">
-    <div className="panel-heading"><h2>两份文档，逐页查看</h2><div className="toolbar"><button disabled={!!busy || !pages.length} onClick={onClear}>清空</button><button disabled={!!busy} onClick={onAdd}><Plus size={14} />添加对比文件</button></div></div>
+    <div className="panel-heading"><h2>文档对比</h2><div className="toolbar"><button disabled={!!busy || !pages.length} onClick={onClear}>清空</button><button disabled={!!busy} onClick={onAdd}><Plus size={14} />添加对比文件</button></div></div>
     {busy && <p className="pdf-compare-note" role="status">{busy}<button className="pdf-inline-action" onClick={onCancel}>取消操作</button></p>}
     <div className="pdf-compare-controls"><label>左侧文件<select value={left?.id ?? ''} disabled={!!busy || !sources.length} onChange={e => choose('left', e.target.value)}>{!sources.length && <option value="">请添加 PDF</option>}{sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>右侧文件<select value={right?.id ?? ''} disabled={!!busy || sources.length < 2} onChange={e => choose('right', e.target.value)}>{!right && <option value="">请添加另一份 PDF</option>}{sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>对比方式<select value={mode} onChange={e => setMode(e.target.value)}><option value="slider">滑块对比</option><option value="overlay">透明叠加</option><option value="side">左右并排</option></select></label></div>
-    <p className="pdf-compare-note">按各来源在工作区的当前页序同步翻页，以相同可见尺寸居中对齐。不自动校正扫描偏移，也不判断语义差异。</p>
-    {!valid ? <div className="pdf-compare-empty"><h3>{left && right ? '请选择两个不同来源' : '添加两份 PDF，开始对比'}</h3><p>文件仅在本机渲染，不会合成或修改原文档。</p><button className="primary" disabled={!!busy} onClick={onAdd}>选择文件</button></div> : <>
+    <p className="pdf-compare-note">按两份文档在工作区的当前页序同步翻页，以相同可见尺寸居中对齐。</p>
+    {!valid ? <div className="pdf-compare-empty"><h3>{left && right ? '请选择两个不同来源' : '添加两份 PDF，开始对比'}</h3><p>导入两份 PDF，通过滑块、叠加或并排方式逐页比对。</p><button className="primary" disabled={!!busy} onClick={onAdd}>选择文件</button></div> : <>
       <div className="pdf-compare-navigation"><button aria-label="对比上一页" disabled={current === 0} onClick={() => setIndex(current - 1)}><ArrowLeft size={15} />上一页</button><label>对比页码<select value={current} onChange={e => setIndex(Number(e.target.value))}>{Array.from({ length: count }, (_, i) => <option key={i} value={i}>第 {i + 1} 页 / {count}</option>)}</select></label><button aria-label="对比下一页" disabled={current >= count - 1} onClick={() => setIndex(current + 1)}>下一页<ArrowRight size={15} /></button></div>
       {(!a || !b) && <p className="pdf-compare-note pdf-compare-missing" role="status">{!a ? '左侧' : '右侧'}文件没有第 {current + 1} 页；该侧暂以空白显示。</p>}
       {error ? <p className="pdf-compare-note" role="alert">{error}</p> : images ? <>
@@ -51,6 +51,5 @@ export function PdfCompare({ sources, pages, renderer, busy, onAdd, onClear, onC
         {mode !== 'side' && <label className="pdf-compare-range">{mode === 'slider' ? `分界位置 · ${amount}%（左文件 / 右文件）` : `右侧叠加不透明度 · ${amount}%`}<input type="range" min="0" max="100" value={amount} onChange={e => setAmount(Number(e.target.value))} /></label>}
       </> : <p className="pdf-compare-note" role="status">正在渲染两份文档…</p>}
     </>}
-    <p className="pdf-compare-note">此工具仅作视觉查看，不生成差异报告。页面尺寸不同时保留比例；页数不同会明确标出缺页。</p>
   </section>;
 }
