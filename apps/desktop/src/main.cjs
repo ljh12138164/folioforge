@@ -12,7 +12,7 @@ const origin = 'pixelforge://app';
 const csp = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'";
 
 async function createWindow() {
-  const window = new BrowserWindow({ width: 1320, height: 920, minWidth: 760, minHeight: 640, title: 'FolioForge · 页匠', icon: join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'), backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1219' : '#f5f6fa', show: !process.env.PIXELFORGE_SMOKE_TEST,
+  const window = new BrowserWindow({ width: 1320, height: 920, minWidth: 760, minHeight: 640, title: 'FolioForge · 页匠', icon: join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'), backgroundColor: nativeTheme.shouldUseDarkColors ? '#161311' : '#f7f3ec', show: !process.env.PIXELFORGE_SMOKE_TEST,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, preload: join(__dirname, 'preload.cjs') },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -26,7 +26,7 @@ app.whenReady().then(async () => {
     if (event.senderFrame?.url.startsWith(origin + '/') && ['system', 'light', 'dark'].includes(preference)) nativeTheme.themeSource = preference;
   });
   nativeTheme.on('updated', () => {
-    for (const window of BrowserWindow.getAllWindows()) window.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0f1219' : '#f5f6fa');
+    for (const window of BrowserWindow.getAllWindows()) window.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#161311' : '#f7f3ec');
   });
   const root = app.isPackaged ? join(app.getAppPath(), 'web') : resolve(__dirname, '../../web/out');
   protocol.handle('pixelforge', async (request) => {

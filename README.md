@@ -2,13 +2,13 @@
 
 在本机处理 PDF 与图片的工具站，提供网页版和 Electron 桌面版。项目使用 Turborepo、pnpm、Next.js App Router 和 Tailwind CSS 4。
 
-图片通过 Web Worker 调用 ImageMagick WASM 处理，无需上传。Next.js 只导出静态文件，不运行 API、数据库或转换后端。Electron 将页面、Worker 和 WASM 一起打包，通过本地协议加载，安装后可离线使用。
+图片通过 Web Worker 调用 ImageMagick WASM 处理，HEIC 输出和 SVG 路径描摹使用仓库内 Rust + wasm-bindgen 模块，无需上传。Next.js 只导出静态文件，不运行 API、数据库或转换后端。Electron 将页面、Worker 和 WASM 一起打包，通过本地协议加载，安装后可离线使用。
 
 PDF 工作台使用 pdf-lib 处理页面、PDF.js 生成真实预览，字体、CMap、Worker 和解码器均随网站提供，不依赖 CDN。
 
 ## 开发与验证
 
-需要 Node.js 22.18+（或 24+）和 pnpm 11.25。
+需要 Node.js 22.18+（或 24+）、pnpm 11.25 和 Rust（通过 rustup 安装）。`rust-toolchain.toml` 固定 Rust 1.97.1 与 `wasm32-unknown-unknown`；首次构建会安装匹配的 wasm-bindgen CLI 0.2.129。
 
 ```powershell
 cd D:\code\pixelforge
@@ -17,6 +17,10 @@ pnpm dev
 ```
 
 网页开发地址为 <http://127.0.0.1:43187>。
+
+`packages/heic-wasm` 是同一 pnpm/Turborepo 工作区中的 Rust 包。`pnpm dev`、`pnpm build` 和 `pnpm check` 会先生成 WASM 与 JS/TS 绑定；直接运行 Web 的 dev/build 也会编译该包。可用 `pnpm --filter @pixelforge/heic-wasm build` 单独构建，`pnpm --filter @pixelforge/heic-wasm test` 用独立 ImageMagick 解码器验证输出、任意尺寸、画质与输入边界。生成文件在 `pkg/`，不提交 Git；Cargo.lock 固定 Rust 依赖。
+
+`packages/vectorizer-wasm` 使用固定版本 VTracer `1.0.0-alpha.4`，同样随 Web dev/build 和 Turbo 依赖构建。`pnpm --filter @pixelforge/vectorizer-wasm test` 验证三种模式的真实路径和输入边界；浏览器 SVG 用例验证渲染像素、预览、下载、ZIP、刷新恢复与 SVG→PNG 回读。
 
 ```powershell
 pnpm check
@@ -30,9 +34,9 @@ pnpm --filter @pixelforge/web preview
 
 生产静态预览地址为 <http://127.0.0.1:43188>。预览文件服务器仅用于本地查看产物。PDF 的离线缓存仅在生产构建启用，使用 `pnpm build` 后运行预览验证。
 
-`pnpm test:unit` 使用 Vitest 验证调度上限、大图独占、内存策略、暂停、存储失败等待在途提交，以及引擎取消与故障隔离。`pnpm web:test` 先构建生产静态页面并运行 Vitest，再用 Playwright 在真实 Chromium 浏览器中验证转换、文件与 ZIP 下载、任务保存、暂停续跑、处理中刷新、浏览器关闭后恢复、多窗口互斥、取消、失败重试与存储写入失败，也覆盖实际并行、大图独占和模拟内存错误/引擎崩溃后的有限重试。失败时保存截图和 trace 到 `apps/web/work/test-results/`。如果本机已安装 Chrome，可设置环境变量 `PLAYWRIGHT_CHANNEL=chrome`，使用本机浏览器，无需下载测试版 Chromium。
+`pnpm test:unit` 使用 Vitest 验证调度上限、大图独占、内存策略、暂停、存储失败等待在途提交，以及引擎取消与故障隔离。`pnpm web:test` 先构建生产静态页面并运行 Vitest，再用 Playwright 在真实 Chromium 浏览器中验证转换、文件与 ZIP 下载、任务保存、暂停续跑、处理中刷新、浏览器关闭后恢复、多标签页独立保存与恢复、取消、失败重试与存储写入失败，也覆盖实际并行、大图独占和模拟内存错误/引擎崩溃后的有限重试。失败时保存截图和 trace 到 `apps/web/work/test-results/`。如果本机已安装 Chrome，可设置环境变量 `PLAYWRIGHT_CHANNEL=chrome`，使用本机浏览器，无需下载测试版 Chromium。
 
-`pnpm test` 包含上述 Web 测试、引擎测试和真实 Electron 窗口测试，因此需要桌面图形环境和 Playwright 浏览器。引擎测试包含 14 种格式的实际编码和 PNG 回读，以及透明通道、背景填色、元数据、尺寸限制、损坏文件和动图拒绝。桌面测试覆盖首页示例转换、设置传递、AVIF 转换、原生文件保存、ZIP 下载、本地协议和渲染器隔离。
+`pnpm test` 包含上述 Web 测试、引擎测试和真实 Electron 窗口测试，因此需要桌面图形环境和 Playwright 浏览器。引擎测试包含 15 种位图格式的实际编码和 PNG 回读、SVG 真实路径输出，以及透明通道、背景填色、元数据、尺寸限制、损坏文件和动图拒绝。桌面测试覆盖首页示例转换、设置传递、AVIF 转换、原生文件保存、ZIP 下载、本地协议和渲染器隔离。
 
 PDF 测试覆盖真实文档合并、顺序与旋转回读、撤销重做、页码提取、拆分 ZIP、PNG/JPG 导出和图片转 PDF；还会在断网冷重载后首次加载处理引擎并导出结果，检查移动端、深浅主题和本地请求。可单独运行 `pnpm --filter @pixelforge/web exec playwright test test/pdf.spec.mjs`（需先构建）；已安装 Edge 的 Windows 可设置 `PLAYWRIGHT_CHANNEL=msedge`。
 
@@ -53,7 +57,7 @@ apps/desktop/dist/PixelForge-win32-x64/PixelForge.exe
 
 保留整个 `PixelForge-win32-x64` 文件夹，双击其中的 EXE 启动。当前已验证 Windows x64；尚未制作安装向导、应用签名或自动更新。
 
-`.github/workflows/desktop.yml` 提供 Windows x64、macOS arm64 / x64、Ubuntu 24.04 x64 的构建、Web / 引擎 / Electron 测试和打包产物启动验证入口。当前未连接 Git remote，工作流尚未执行，macOS / Linux 仍待对应系统实际运行验证。
+`.github/workflows/desktop.yml` 提供 Windows x64、macOS arm64 / x64、Ubuntu 24.04 x64 的构建、Web / 引擎 / Electron 测试和打包产物启动验证入口。跨平台结果以对应 GitHub Actions 运行记录为准。
 
 首次安装需要下载 Electron。如果 GitHub 下载失败，可按 Electron 支持的镜像配置重试：
 
@@ -78,11 +82,17 @@ pnpm desktop:package
 - 单张保存或 ZIP 批量下载，同名结果自动加后缀。
 - 桌面与手机布局、键盘焦点和减少动态效果设置。
 
-支持 14 种导出格式：JPG、PNG、WebP、AVIF、GIF、TIFF、BMP、ICO、JPEG XL、QOI、TGA、PSD、JPEG 2000、EXR。HEIC/HEIF 仅导入；SVG 仅导入并由浏览器栅格化。具体变体和损坏文件可能无法解码，页面会逐张提示。
+支持 16 种导出格式：JPG、PNG、WebP、AVIF、GIF、TIFF、BMP、ICO、JPEG XL、QOI、TGA、PSD、JPEG 2000、EXR、HEIC、SVG。HEIC/HEIF 可导入；SVG 导入由浏览器栅格化，导出为 VTracer 生成的矢量路径。具体变体和损坏文件可能无法解码，页面会逐张提示。
 
-图片工作台仅处理静态图片，拒绝动图和多页文件；PSD 仅读写合成图，不保留图层。单张上限 40 MiB、4800 万像素，尺寸输入为 1–16384px，ICO 最长边不超过 256px。不支持相机 RAW、PDF、SVG 矢量导出或位图矢量化，不承诺专业色彩、HDR 或高位深保真。PDF 请使用独立的 PDF 工作台。
+HEIC 编码器使用 MIT 的 zvidlib 0.5.0 本地补丁版，输出单张 8-bit YUV 4:2:0 有损 HEVC/HEIF。透明区域按背景色填充，元数据始终移除，不保留 HDR、广色域、动画或辅助图像；质量 100 也不保证无损。纯 CPU 编码，大图耗时较长，可缩小尺寸或取消任务。完整 WASM 约 199 KB（gzip 约 81 KB）。来源、许可和浏览器移植取舍见 [调研记录](docs/HEIC-WASM-RESEARCH.md) 与 [补丁说明](packages/heic-wasm/vendor/README.md)。
 
-默认仅保存在内存中。开启「保存任务到此设备」后，任务与图片通过 IndexedDB 保存到本地磁盘；清空、移除任务或关闭保存会删除对应磁盘副本。浏览器清除网站数据或回收存储仍可能导致丢失，请及时下载结果。不支持存储锁的浏览器仅提供内存模式；同一来源的工作台只允许一个窗口使用队列。
+生成的网站和桌面资源中包含 `/image-assets/HEIC-LICENSE.txt`，保留 HEIC 编码器、上游引擎和 JS 绑定的 MIT 声明。
+
+SVG 提供彩色图标、黑白线稿、照片描摹三种模式。透明和半透明区域先合成到所选背景色，黑白模式再转为黑色前景和白色背景；文字成为轮廓，照片与渐变为近似描摹，不保证无损或体积更小。调整尺寸后的描摹输入最多 400 万像素，生成结果最多 16 MiB；超限需减小最大宽高。SVG→SVG 也会先栅格化再描摹，不保留原路径、文字、滤镜或图层。预览由浏览器重新渲染实际生成的 SVG。许可随 `/image-assets/VECTORIZER-LICENSE.txt` 分发。
+
+图片工作台仅处理静态图片，拒绝动图和多页文件；PSD 仅读写合成图，不保留图层。单张上限 40 MiB、4800 万像素，尺寸输入为 1–16384px，ICO 最长边不超过 256px。不支持相机 RAW、PDF，不承诺专业色彩、HDR 或高位深保真。PDF 请使用独立的 PDF 工作台。
+
+每个标签页的任务、参数与自动保存相互独立。新标签页从空白开始，刷新恢复当前标签页的任务；浏览器恢复原标签页身份时可读取对应的已保存任务。添加、转换、移除和清空只影响本标签页，复制标签页也会获得独立队列。旧版共享任务保留并由首次升级的标签页接续。浏览器清除网站数据或回收存储仍可能导致丢失，请及时下载结果；仅存储不可用时使用内存模式并提示刷新或关闭前下载。
 
 暂停会等待已开始的图片完成，取消会立即终止在途转换并取消剩余项。继续任务沿用原任务参数并保留完成结果，中断的单张图片需要从头处理；更改当前设置后可选择重新转换全部。网页关闭后停止执行，重开工作台后由用户继续。
 
@@ -152,6 +162,20 @@ packages/image-engine/
 ```
 
 Next.js 配置 `output: 'export'`，构建生成 `apps/web/out`。部署网页版时完整上传该目录，以 HTTP(S) 托管；`.wasm` 使用 `application/wasm`，`.mjs` 使用 JavaScript MIME，可开启 gzip/Brotli。`/pdf-sw.js` 建议禁用长期 HTTP 缓存，让新构建及时更新。当前按域名根路径部署，子路径需要同步调整 `basePath`、资源路径与离线缓存作用域。构建使用 webpack 打包跨 workspace 的 Worker 和 WASM。
+
+## 正式域名、SEO 与访问统计
+
+默认正式地址为 `https://folioforge.ljhboard.cn`。部署时将该子域名的 DNS 指向静态托管服务、配置 HTTPS，并上传完整 `apps/web/out/`；其他公开访问域名应在托管端重定向到正式地址。当前改动不包含 DNS 或线上部署。
+
+仓库已准备与现有站点一致的 Docker + 受限 SSH 上线流程，见 [部署、验证与回滚](docs/DEPLOYMENT.md)。`.github/workflows/web-deploy.yml` 会先验证 Web 与镜像；仅 main 且仓库变量 `ENABLE_PRODUCTION_DEPLOY=true` 时发布到 production。首次需要配置服务器、域名证书、专用 SSH 密钥和 GitHub 变量；Dockerfile 仅包装先前构建好的静态产物。
+
+`apps/web/.env.example` 列出构建时配置。可复制为该目录的 `.env.local`，或在 CI 设置同名环境变量；修改后必须重新构建。`NEXT_PUBLIC_SITE_URL` 必须是无子路径、查询参数的 HTTP(S) origin。公开预览环境设置 `NEXT_PUBLIC_SITE_INDEXABLE=false`，输出 `noindex, follow` 和空站点地图；本地预览本身不应公开暴露给搜索引擎。
+
+五个页面提供独立标题、描述、canonical、Open Graph / Twitter 分享信息和 JSON-LD；查询参数对应同一工作台的设置，canonical 不包含这些参数。`/guide/` 提供可直接抓取的操作步骤、格式限制、离线与隐私说明。构建还输出 `/robots.txt`、`/sitemap.xml`、`/llms.txt`、1200×630 分享图和 SVG 图标。静态托管需正确提供 XML、文本、SVG、PNG 和 WASM MIME。`llms.txt` 是补充说明，不保证搜索排名或 AI 引用。上线后可向搜索平台提交站点地图并检查实际抓取结果。
+
+Umami 使用 `https://analytics.ljhboard.cn/script.js`，Website ID 为 `d870329a-3066-4586-b0b9-88160f29d476`。脚本在页面交互就绪后加载，仅在构建配置对应的 HTTPS 正式主机名启用；localhost、其他预览域名和 Electron 不加载统计。排除页面 URL 查询参数与片段，尊重浏览器 Do Not Track，不添加文件名、文件内容、OCR 文字或转换结果事件。统计服务加载失败不影响工具。将 `NEXT_PUBLIC_UMAMI_WEBSITE_ID` 设置为空并重新构建即可关闭。部署 CSP 时按 Umami 实例配置放行对应的脚本与上报域名。
+
+本轮实现与验证记录见 [SEO / GEO 记录](docs/GEO-ANALYSIS.md)。
 
 ## 设计记录
 

@@ -4,7 +4,7 @@ import { unzipSync } from 'fflate';
 import { readFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const screenshots = resolve('../../.impeccable/review/pdf');
+const screenshots = resolve('work/test-results/visual/pdf');
 const source = async (widths, rotation = 0) => {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -37,7 +37,7 @@ async function thumbnails(page) {
 
 test('tool directory filters, searches and opens the selected PDF tool', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '文件处理，就在本机。' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PDF 与图片工具箱' })).toBeVisible();
   await expect(page.locator('.tools-entry')).toHaveCount(21);
   await page.getByRole('button', { name: /^图片\s*2$/ }).click();
   await expect(page.locator('.tools-entry')).toHaveCount(2);
@@ -136,7 +136,7 @@ test('cold offline reload still loads the PDF engine, sample, renderer and expor
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: '把每一页，安排妥当。' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PDF 工作台' })).toBeVisible();
   await expect(page.locator('.pdf-footer')).toContainText('正在离线使用');
   await page.getByRole('button', { name: '载入示例文档', exact: true }).click();
   await expect(page.locator('.pdf-page')).toHaveCount(3);

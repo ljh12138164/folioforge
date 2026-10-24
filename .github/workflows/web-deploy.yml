@@ -1,0 +1,129 @@
+name: Web CI and Deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_PUBLIC_SITE_URL: https://folioforge.ljhboard.cn
+  NEXT_PUBLIC_SITE_INDEXABLE: 'true'
+  NEXT_PUBLIC_UMAMI_SCRIPT_URL: https://analytics.ljhboard.cn/script.js
+  NEXT_PUBLIC_UMAMI_WEBSITE_ID: d870329a-3066-4586-b0b9-88160f29d476
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    concurrency:
+      group: web-verify-${{ github.head_ref || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: rustup toolchain install 1.97.1 --profile minimal --target wasm32-unknown-unknown
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/wasm-bindgen*
+            target
+          key: web-rust-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+      - name: Prepare WASM bindings CLI
+        run: |
+          if ! wasm-bindgen --version 2>/dev/null | grep -qx 'wasm-bindgen 0.2.129'; then
+            cargo install wasm-bindgen-cli --version 0.2.129 --locked
+          fi
+      - uses: actions/cache@v4
+        with:
+          path: apps/web/public/pdf-assets/ocr/v7/lang
+          key: ocr-models-${{ hashFiles('apps/web/scripts/prepare-ocr-assets.mjs') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm --filter @pixelforge/heic-wasm --filter @pixelforge/vectorizer-wasm --filter @pixelforge/image-engine test
+      - run: pnpm --filter @pixelforge/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @pixelforge/web build
+      - run: pnpm --filter @pixelforge/web test
+      - name: Package and verify the static runtime
+        run: |
+          docker build --build-arg RELEASE_SHA="$GITHUB_SHA" -t "folioforge:sha-$GITHUB_SHA" .
+          node scripts/test-runtime-image.mjs "folioforge:sha-$GITHUB_SHA" "$GITHUB_SHA"
+      - name: Check release scripts
+        run: |
+          bash -n deploy/server/deploy-folioforge
+          sh -n deploy/server/folioforge-deploy-gate
+          bash scripts/test-deploy.sh
+          docker run --rm -v "$PWD:/repo:ro" koalaman/shellcheck:v0.11.0 /repo/deploy/server/deploy-folioforge /repo/deploy/server/folioforge-deploy-gate /repo/scripts/test-deploy.sh
+
+  deploy:
+    # Repository-level variable: production stays disabled until bootstrap is done.
+    if: >-
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      vars.ENABLE_PRODUCTION_DEPLOY == 'true'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment:
+      name: production
+      url: https://folioforge.ljhboard.cn
+    concurrency:
+      group: folioforge-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: rustup toolchain install 1.97.1 --profile minimal --target wasm32-unknown-unknown
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/wasm-bindgen*
+            target
+          key: web-rust-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+      - uses: actions/cache@v4
+        with:
+          path: apps/web/public/pdf-assets/ocr/v7/lang
+          key: ocr-models-${{ hashFiles('apps/web/scripts/prepare-ocr-assets.mjs') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @pixelforge/web build
+      - name: Build and verify release image
+        run: |
+          docker build --build-arg RELEASE_SHA="$GITHUB_SHA" -t "folioforge:sha-$GITHUB_SHA" .
+          node scripts/test-runtime-image.mjs "folioforge:sha-$GITHUB_SHA" "$GITHUB_SHA"
+      - name: Configure restricted SSH client
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_SSH_KEY" && test -n "$DEPLOY_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+      - name: Deploy immutable image stream
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'folioforge-deploy' }}
+        run: |
+          test -n "$DEPLOY_HOST"
+          docker save "folioforge:sha-$GITHUB_SHA" | gzip | ssh -i ~/.ssh/deploy_key \
+            -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "deploy sha-$GITHUB_SHA"
+      - name: Verify public release
+        run: node scripts/verify-deployment.mjs https://folioforge.ljhboard.cn "$GITHUB_SHA"

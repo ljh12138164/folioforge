@@ -1,0 +1,49 @@
+import assert from 'node:assert/strict';
+
+const base = new URL(process.argv[2] || 'http://127.0.0.1:18085');
+const revision = process.argv[3];
+const origin = 'https://folioforge.ljhboard.cn';
+const paths = ['/', '/pdf/', '/convert/', '/images/', '/guide/'];
+async function get(path, method = 'GET') {
+  return fetch(new URL(path, base), { method, redirect: 'manual', signal: AbortSignal.timeout(15000), headers: { 'Cache-Control': 'no-cache' } });
+}
+for (const path of paths) {
+  const response = await get(path);
+  assert.equal(response.status, 200, path);
+  assert.match(response.headers.get('content-type') || '', /text\/html/, path);
+  assert.match(response.headers.get('cache-control') || '', /no-cache/, path);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff', path);
+  const html = await response.text();
+  assert.ok(html.includes(`rel="canonical" href="${origin}${path}"`), `Canonical: ${path}`);
+  assert.ok(html.includes('application/ld+json'), `Schema: ${path}`);
+}
+const worker = await get('/pdf-sw.js');
+assert.match(worker.headers.get('cache-control') || '', /no-store/);
+assert.match(worker.headers.get('content-type') || '', /javascript/);
+const source = await worker.text();
+const assets = JSON.parse(source.match(/const ASSETS = (\[[^\n]*\]);/)[1]);
+for (let offset = 0; offset < assets.length; offset += 12) {
+  await Promise.all(assets.slice(offset, offset + 12).map(async path => {
+    const response = await get(path, 'HEAD');
+    assert.equal(response.status, 200, `Offline asset: ${path}`);
+    if (path.endsWith('.wasm')) assert.match(response.headers.get('content-type') || '', /application\/wasm/, path);
+    if (path.endsWith('.mjs')) assert.match(response.headers.get('content-type') || '', /javascript/, path);
+    if (path.startsWith('/_next/static/')) assert.match(response.headers.get('cache-control') || '', /immutable/, path);
+  }));
+}
+const sitemap = await get('/sitemap.xml');
+assert.match(sitemap.headers.get('content-type') || '', /xml/);
+assert.deepEqual([...(await sitemap.text()).matchAll(/<loc>(.*?)<\/loc>/g)].map(match => match[1]), paths.map(path => origin + path));
+assert.ok((await (await get('/robots.txt')).text()).includes(origin + '/sitemap.xml'));
+const llms = await get('/llms.txt');
+assert.match(llms.headers.get('content-type') || '', /text\/plain/);
+assert.ok((await llms.text()).includes(origin + '/guide/'));
+for (const path of ['/missing-release-page', '/_next/static/missing.js']) assert.equal((await get(path)).status, 404, path);
+for (const path of ['/pdf', '/convert', '/guide']) {
+  const response = await get(path + '?verify=1');
+  assert.equal(response.status, 301, path);
+  assert.equal(response.headers.get('location'), path + '/?verify=1');
+}
+assert.equal((await get('/healthz')).status, 200);
+if (revision) assert.equal((await (await get('/release.txt')).text()).trim(), revision);
+console.log(`Deployment verified: ${paths.length} pages, ${assets.length} offline resources, MIME/cache/404/redirects${revision ? ', revision ' + revision : ''}.`);

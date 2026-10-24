@@ -96,6 +96,6 @@ export function StampTools({ pages, sources, renderer, busy, onApply }: { pages:
     {([['x', '横向位置', 0, 100], ['y', '纵向位置', 0, 100], ['width', '图片宽度', 1, 90]] as const).map(([key, label, min, max]) => <label className="pdf-edit-field" key={key}>{label} · {Math.round(position[key])}%<input type="range" min={min} max={max} value={position[key]} onChange={e => setPosition({ ...position, [key]: Number(e.target.value) })} /></label>)}
     <div className="pdf-field-grid"><label className="pdf-edit-field">旋转角度<select value={position.angle} onChange={e => setPosition({ ...position, angle: Number(e.target.value) })}><option value="0">水平</option><option value="45">45°</option><option value="-45">−45°</option></select></label><label className="pdf-edit-field">不透明度 · {Math.round(position.opacity * 100)}%<input type="range" min="5" max="100" value={position.opacity * 100} onChange={e => setPosition({ ...position, opacity: Number(e.target.value) / 100 })} /></label></div>
     <button className="primary pdf-apply" disabled={!pages.length || !asset || loading} onClick={() => { if (asset) onApply({ kind: 'stamp', image: asset.bytes, ...position }); }}><Stamp size={15} />{loading ? '正在准备图片' : `应用到 ${pages.length} 页`}</button>
-    <p className="pdf-field-hint">只添加外观图片，不是证书数字签名，不提供身份验证或防篡改。应用后可撤销；重复应用会叠加。</p>
+    <p className="pdf-field-hint">应用后可在左侧预览位置效果，支持随时撤销。</p>
   </fieldset>;
 }

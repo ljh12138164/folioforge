@@ -1,0 +1,10 @@
+[workspace]
+members = ["packages/heic-wasm", "packages/vectorizer-wasm"]
+exclude = ["packages/heic-wasm/vendor/zvidlib-hevc-encoder"]
+resolver = "3"
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"
+strip = true

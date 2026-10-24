@@ -4,7 +4,7 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const shots = resolve('../../.impeccable/review/pdf-complete');
+const shots = resolve('work/test-results/visual/pdf-complete');
 const file = (name, bytes) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(bytes) });
 const add = (page, files) => page.getByLabel('导入 PDF 或图片', { exact: true }).setInputFiles(files);
 async function output(page, info, name = 'result.pdf') {

@@ -1,10 +1,15 @@
 {
   "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml"],
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**", "out/**"] },
-    "dev": { "cache": false, "persistent": true },
-    "check": { "dependsOn": ["^check"] },
+    "build": { "dependsOn": ["^build"], "env": ["NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_SITE_INDEXABLE", "NEXT_PUBLIC_UMAMI_SCRIPT_URL", "NEXT_PUBLIC_UMAMI_WEBSITE_ID"], "outputs": [".next/**", "!.next/cache/**", "out/**"] },
+    "dev": { "dependsOn": ["^build"], "cache": false, "persistent": true },
+    "check": { "dependsOn": ["^build", "^check"] },
     "test": { "dependsOn": ["^build"], "outputs": [] },
+    "@pixelforge/heic-wasm#build": { "outputs": ["pkg/**"] },
+    "@pixelforge/heic-wasm#test": { "dependsOn": ["build"], "outputs": [] },
+    "@pixelforge/vectorizer-wasm#build": { "outputs": ["pkg/**"] },
+    "@pixelforge/vectorizer-wasm#test": { "dependsOn": ["build"], "outputs": [] },
     "@pixelforge/desktop#test": { "dependsOn": ["@pixelforge/web#build"], "cache": false, "outputs": [] },
     "@pixelforge/web#test": { "dependsOn": ["@pixelforge/web#build"], "cache": false, "passThroughEnv": ["PLAYWRIGHT_CHANNEL"], "outputs": [] }
   }

@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { DragDropProvider } from '@dnd-kit/react';
+import { isSortable, useSortable } from '@dnd-kit/react/sortable';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Check, CheckCheck, Columns2, Download, FilePlus2, FileSearch, FileStack, FileText, GripVertical, ImageDown, Layers, LayoutGrid, ListOrdered, LoaderCircle, LockKeyhole, Minimize2, PenTool, Plus, Redo2, RotateCw, ScanText, Scissors, Search, ShieldCheck, Stamp, Trash2, Undo2, Upload, X, ZoomIn } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { SiteHeader } from '../SiteHeader';
@@ -23,21 +26,22 @@ import { useOffline } from './use-offline';
 type Mode = 'organize' | 'extract' | 'split' | 'images' | 'numbers' | 'watermark' | 'layout' | 'text' | 'duplex' | 'blank' | 'stamp' | 'compare' | 'ocr' | 'compress';
 type History = { pages: PdfPage[]; past: PdfPage[][]; future: PdfPage[][] };
 type Renderer = ReturnType<typeof createPdfRenderer>;
+const modeGroups = ['页面整理', '版面印记', '识别与转换'] as const;
 const modes = [
-  { id: 'organize', label: '整理与合并', icon: Layers, detail: '拖拽调整页序、旋转或删除页面，可将多份 PDF 与图片合并为一份文档。' },
-  { id: 'extract', label: '提取页面', icon: FileStack, detail: '勾选或输入页码范围，将选中的页面导出为新 PDF。' },
-  { id: 'split', label: '拆分文档', icon: Scissors, detail: '将每页单独保存为一份 PDF，统一打包为 ZIP 下载。' },
-  { id: 'images', label: '转为图片', icon: ImageDown, detail: '逐页渲染为 PNG 或 JPG 图片，打包为 ZIP 下载。' },
-  { id: 'numbers', label: '添加页码', icon: ListOrdered, detail: '按当前页序编号，先应用到页面预览效果，确认后再导出。' },
-  { id: 'watermark', label: '文字水印', icon: Stamp, detail: '叠加中英文水印，可调颜色、角度与不透明度。' },
-  { id: 'layout', label: '裁剪与排版', icon: LayoutGrid, detail: '裁剪四边留白、等比适配 A4，或将 2 / 4 页合排到一张纸。' },
-  { id: 'text', label: '提取文字', icon: FileText, detail: '提取文档内已有的可选文字，支持按页搜索并导出 TXT；扫描图片请改用 OCR。' },
-  { id: 'duplex', label: '双面重排', icon: ArrowUpDown, detail: '将分开扫描的正反面交错排回阅读顺序，确认新页序后再应用。' },
-  { id: 'blank', label: '空白页识别', icon: FileSearch, detail: '按墨迹比例筛选疑似空白页，逐页预览确认后再手动删除。' },
-  { id: 'stamp', label: '签名与图片', icon: PenTool, detail: '手写签名或上传图片，调整位置、大小与不透明度后应用到页面。' },
-  { id: 'compare', label: '视觉对比', icon: Columns2, detail: '同步翻页，通过滑块、透明叠加或左右并排对照两份文档。' },
-  { id: 'ocr', label: '扫描件 OCR', icon: ScanText, detail: '使用本地模型识别中英文扫描件，导出 TXT 或可搜索 PDF。' },
-  { id: 'compress', label: '压缩 PDF', icon: Minimize2, detail: '提供重存优化与扫描件降采样，对比压缩前后体积后下载。' },
+  { id: 'organize', group: '页面整理', label: '整理与合并', icon: Layers, detail: '拖拽调整页序、旋转或删除页面，可将多份 PDF 与图片合并为一份文档。' },
+  { id: 'extract', group: '页面整理', label: '提取页面', icon: FileStack, detail: '勾选或输入页码范围，将选中的页面导出为新 PDF。' },
+  { id: 'split', group: '页面整理', label: '拆分文档', icon: Scissors, detail: '将每页单独保存为一份 PDF，统一打包为 ZIP 下载。' },
+  { id: 'duplex', group: '页面整理', label: '双面重排', icon: ArrowUpDown, detail: '将分开扫描的正反面交错排回阅读顺序，确认新页序后再应用。' },
+  { id: 'blank', group: '页面整理', label: '空白页识别', icon: FileSearch, detail: '按墨迹比例筛选疑似空白页，逐页预览确认后再手动删除。' },
+  { id: 'numbers', group: '版面印记', label: '添加页码', icon: ListOrdered, detail: '按当前页序编号，先应用到页面预览效果，确认后再导出。' },
+  { id: 'watermark', group: '版面印记', label: '文字水印', icon: Stamp, detail: '叠加中英文水印，可调颜色、角度与不透明度。' },
+  { id: 'stamp', group: '版面印记', label: '签名与图片', icon: PenTool, detail: '手写签名或上传图片，调整位置、大小与不透明度后应用到页面。' },
+  { id: 'layout', group: '版面印记', label: '裁剪与排版', icon: LayoutGrid, detail: '裁剪四边留白、等比适配 A4，或将 2 / 4 页合排到一张纸。' },
+  { id: 'images', group: '识别与转换', label: '转为图片', icon: ImageDown, detail: '逐页渲染为 PNG 或 JPG 图片，打包为 ZIP 下载。' },
+  { id: 'text', group: '识别与转换', label: '提取文字', icon: FileText, detail: '提取文档内已有的可选文字，支持按页搜索并导出 TXT；扫描图片请改用 OCR。' },
+  { id: 'ocr', group: '识别与转换', label: '扫描件 OCR', icon: ScanText, detail: '使用本地模型识别中英文扫描件，导出 TXT 或可搜索 PDF。' },
+  { id: 'compress', group: '识别与转换', label: '压缩 PDF', icon: Minimize2, detail: '提供重存优化与扫描件降采样，对比压缩前后体积后下载。' },
+  { id: 'compare', group: '识别与转换', label: '视觉对比', icon: Columns2, detail: '同步翻页，通过滑块、透明叠加或左右并排对照两份文档。' },
 ] as const;
 const bytesLabel = (size: number) => `${(size / 1024 / 1024).toFixed(1)} MiB`;
 function highlightText(text: string, query: string) {
@@ -88,6 +92,11 @@ function PageCanvas({ page, source, renderer, large = false }: { page: PdfPage; 
     {image ? <img src={image} alt={`${source.name} 第 ${page.index + 1} 页${page.rotation ? `，旋转 ${page.rotation} 度` : ''}`} draggable={false} />
       : error ? <span className="pdf-preview-failed"><FileText size={24} />预览不可用</span> : <LoaderCircle size={20} className="pdf-spinner" aria-label="正在生成预览" />}
   </div>;
+}
+
+function SortablePage({ id, index, selected, disabled, children }: { id: string; index: number; selected: boolean; disabled: boolean; children: (handleRef: (element: Element | null) => void) => ReactNode }) {
+  const { ref, handleRef, isDragging } = useSortable({ id, index, disabled, transition: { duration: 240, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', idle: true } });
+  return <article ref={ref} data-page-id={id} className={`pdf-page${selected ? ' selected' : ''}${isDragging ? ' is-dragging' : ''}`}>{children(handleRef)}</article>;
 }
 
 export function PdfApp() {
@@ -190,7 +199,9 @@ export function PdfApp() {
   }
   function reorder(from: number, to: number) {
     const next = movePage(pages, from, to);
-    if (next !== pages) edit(next, `页面已从第 ${from + 1} 位移到第 ${to + 1} 位`);
+    if (next !== pages) {
+      edit(next, `页面已从第 ${from + 1} 位移到第 ${to + 1} 位`);
+    }
   }
   function clear() {
     if (!window.confirm('清空当前任务？未下载的编辑结果将丢失，原文件不受影响。')) return;
@@ -407,16 +418,30 @@ export function PdfApp() {
   return <div className="app-shell pdf-app">
     <SiteHeader active="pdf" onHelp={() => document.getElementById('pdf-guide')?.scrollIntoView({ behavior: 'smooth' })} />
     <main>
-      <section className="intro pdf-intro">
-        <div><h1>把每一页，<span>安排妥当。</span></h1><p>在本地完成页面整理、加印、排版、OCR 识别与体积压缩，文件不上传服务器。</p></div>
-        <span className="pdf-private"><ShieldCheck size={15} />无需上传 · 无需注册</span>
+      <section className="pdf-studio-bar">
+        <div className="pdf-studio-title">
+          <h1>PDF 工作台</h1>
+          <span className="pdf-studio-sep" aria-hidden="true" />
+          <span className="pdf-mode-badge">{selectedMode.label}</span>
+          <p className="pdf-mode-summary">{selectedMode.detail}</p>
+        </div>
+        <span className="pdf-status-pill"><LockKeyhole size={12} />{pages.length ? `${activeSources.length} 份来源 · ${pages.length} 页` : '本地离线处理'}</span>
       </section>
-      <div className="pdf-tool-tabs" role="group" aria-label="PDF 工具">
-        {modes.map(({ id, label, icon: Icon }) => <button key={id} aria-pressed={mode === id} onClick={() => chooseMode(id)} disabled={!!busy}><Icon size={16} />{label}</button>)}
-      </div>
       <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden aria-label="导入 PDF 或图片" onChange={event => { void importFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
       <div className={`workspace pdf-workspace${dragging ? ' pdf-drop-active' : ''}`} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDragging(true); } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }} onDrop={event => { if (event.dataTransfer.files.length) { event.preventDefault(); setDragging(false); void importFiles(Array.from(event.dataTransfer.files)); } }}>
-        {mode === 'compare' ? <><PdfCompare sources={activeSources} pages={pages} renderer={getRenderer()} busy={busy} onAdd={() => input.current?.click()} onClear={clear} onCancel={cancel} />{!!errors.length && <div className="pdf-errors" role="alert">{errors.join('；')}</div>}</> : <>
+        <div className="pdf-tool-tabs" role="group" aria-label="PDF 工具">
+          {modeGroups.map(groupName => (
+            <div className="pdf-rail-group" key={groupName}>
+              <span className="pdf-rail-heading">{groupName}</span>
+              <div className="pdf-rail-items">
+                {modes.filter(item => item.group === groupName).map(({ id, label, icon: Icon }) => (
+                  <button key={id} type="button" aria-pressed={mode === id} onClick={() => chooseMode(id)} disabled={!!busy}><Icon size={15} />{label}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        {mode === 'compare' ? <div className="pdf-compare-shell"><PdfCompare sources={activeSources} pages={pages} renderer={getRenderer()} busy={busy} onAdd={() => input.current?.click()} onClear={clear} onCancel={cancel} />{!!errors.length && <div className="pdf-errors" role="alert">{errors.join('；')}</div>}</div> : <>
         <section className="workspace-main pdf-main" aria-label="页面工作区" aria-busy={!!busy}>
           <div className="panel-heading">
             <h2><FileText size={16} />文档页面 <span className="count">{pages.length}</span></h2>
@@ -437,19 +462,23 @@ export function PdfApp() {
                 {!textMatches.length && <p className="pdf-text-hint">没有匹配文字，请更换关键词。</p>}
                 {textMatches.map(item => <article className="pdf-text-page" key={item.id}><button onClick={() => setPreview(item.id)} disabled={!!busy}>第 {item.number} 页<ZoomIn size={14} /><span>查看原页</span></button><pre tabIndex={0} aria-label={`第 ${item.number} 页提取文字`}>{item.text ? highlightText(item.text, textQuery) : '此页未提取到文字，可能是扫描页。'}</pre></article>)}
               </>}
-            </div> : <div className="pdf-pages">
+            </div> : <DragDropProvider onDragStart={event => setDragPage(String(event.operation.source?.id))} onDragEnd={event => {
+              setDragPage(undefined);
+              const { source } = event.operation;
+              if (!event.canceled && isSortable(source)) reorder(source.initialIndex, source.index);
+            }}><div className={`pdf-pages${dragPage ? ' is-sorting' : ''}`}>
               {pages.map((page, index) => {
                 const source = sources.find(s => s.id === page.sourceId)!;
-                return <article key={page.id} className={`pdf-page${selected.has(page.id) ? ' selected' : ''}${dragPage === page.id ? ' is-dragging' : ''}`} draggable={!busy} onDragStart={event => { if (busy) return; event.dataTransfer.setData('application/x-pixelforge-page', page.id); event.dataTransfer.effectAllowed = 'move'; setDragPage(page.id); }} onDragEnd={() => setDragPage(undefined)} onDragOver={event => { if (dragPage && !busy) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; } }} onDrop={event => { const from = event.dataTransfer.getData('application/x-pixelforge-page'); if (from && !busy) { event.preventDefault(); event.stopPropagation(); reorder(pages.findIndex(p => p.id === from), index); setDragPage(undefined); } }}>
-                  <div className="pdf-page-top"><label><input type="checkbox" aria-label={`选择第 ${index + 1} 页`} checked={selected.has(page.id)} disabled={!!busy} onChange={event => { const next = new Set(selected); if (event.target.checked) next.add(page.id); else next.delete(page.id); setSelected(next); setResult(undefined); }} /><span>{String(index + 1).padStart(2, '0')}</span></label><GripVertical size={15} aria-hidden="true" /></div>
+                return <SortablePage key={page.id} id={page.id} index={index} selected={selected.has(page.id)} disabled={!!busy}>{handleRef => <>
+                  <div className="pdf-page-top"><label><input type="checkbox" aria-label={`选择第 ${index + 1} 页`} checked={selected.has(page.id)} disabled={!!busy} onChange={event => { const next = new Set(selected); if (event.target.checked) next.add(page.id); else next.delete(page.id); setSelected(next); setResult(undefined); }} /><span>{String(index + 1).padStart(2, '0')}</span></label><button ref={handleRef} className="pdf-drag-handle" aria-label={`拖动第 ${index + 1} 页排序`} title="拖动排序；也可按空格和方向键" disabled={!!busy}><GripVertical size={15} aria-hidden="true" /></button></div>
                   <button className="pdf-preview-button" aria-label={`预览第 ${index + 1} 页`} onClick={() => setPreview(page.id)}><PageCanvas page={page} source={source} renderer={getRenderer()} /><span className="pdf-zoom"><ZoomIn size={15} />预览</span></button>
                   <p title={source.name}>{source.name}</p><span className="pdf-source-page">原文件第 {page.index + 1} 页{page.rotation ? ` · ${page.rotation}°` : ''}</span>
                   {mode === 'blank' && blankCandidates?.some(p => p.id === page.id) && <span className="pdf-blank-tag">候选空白 · 请确认</span>}
                   <div className="pdf-page-actions"><button disabled={!!busy || index === 0} aria-label={`前移第 ${index + 1} 页`} title="前移" onClick={() => reorder(index, index - 1)}><ArrowUp size={14} /></button><button disabled={!!busy || index === pages.length - 1} aria-label={`后移第 ${index + 1} 页`} title="后移" onClick={() => reorder(index, index + 1)}><ArrowDown size={14} /></button><button disabled={!!busy} aria-label={`旋转第 ${index + 1} 页`} title="顺时针旋转 90°" onClick={() => rotate(new Set([page.id]))}><RotateCw size={14} /></button><button disabled={!!busy} aria-label={`删除第 ${index + 1} 页`} title="删除页面" onClick={() => remove(new Set([page.id]))}><Trash2 size={14} /></button></div>
-                </article>;
+                </>}</SortablePage>;
               })}
               <button className="pdf-add-page" disabled={!!busy} onClick={() => input.current?.click()}><FilePlus2 size={28} /><strong>继续添加</strong><span>PDF / PNG / JPG</span></button>
-            </div>}
+            </div></DragDropProvider>}
           </> : <div className="dropzone pdf-empty">
             <div className="import-icon"><FilePlus2 size={30} strokeWidth={1.5} /></div>
             <h2>{history.past.length ? '页面已全部移除' : '从一份文档开始'}</h2>
@@ -458,10 +487,10 @@ export function PdfApp() {
             {history.past.length ? <button className="pdf-empty-undo" disabled={!!busy} onClick={() => undo()}><Undo2 size={14} />撤销删除</button> : <div className="sample-line">想先试试看？<button disabled={!!busy} onClick={() => void sample()}>载入示例文档<ArrowRight size={12} /></button></div>}
             <span className="drop-hint">单个文件 ≤ 40 MiB · 总计 ≤ 100 MiB · 最多 200 页</span>
           </div>}
-          <div className="workspace-bottom"><span><LockKeyhole size={13} />文件只在当前浏览器内处理</span><span>刷新或关闭页面将清空任务</span></div>
+          <div className="workspace-bottom"><span>支持拖入多份 PDF 或 PNG / JPG 图片</span><span>支持最近 20 步撤销与重做</span></div>
         </section>
         <aside className="settings pdf-settings" aria-label="导出设置">
-          <div className="panel-heading"><h2>导出设置</h2><span className="pdf-local-tag">本地处理</span></div>
+          <div className="panel-heading"><h2>导出设置</h2><span className="settings-dot" /></div>
           <div className="pdf-setting-section"><h3>{selectedMode.label}</h3><p>{selectedMode.detail}</p></div>
           {mode !== 'duplex' && <fieldset className="pdf-setting-section" disabled={!!busy}>
             <legend>页面范围</legend>
@@ -494,12 +523,11 @@ export function PdfApp() {
             {!!busy && <div className="pdf-progress" role="status"><span>{busy}</span><progress value={progress} max={100} aria-label="处理进度" /><button onClick={cancel}>取消操作</button></div>}
             {result && <div className="pdf-result" role="status"><strong><Check size={15} />导出完成</strong><span title={result.name}>{result.name}</span><small>{result.count} 页 · {bytesLabel(result.size)}</small>{result.before !== undefined && <small>处理前 {result.before.toLocaleString()} 字节 → 处理后 {result.size.toLocaleString()} 字节</small>}{result.note && <p>{result.note}</p>}{result.pdf && <button className="pdf-inline-action" onClick={() => setOutputPreview(true)}><ZoomIn size={14} />预览结果首页</button>}<a className="primary" href={result.url} download={result.name}><Download size={15} />下载结果</a></div>}
           </div>
-          <div className="pdf-safety-note"><ShieldCheck size={16} /><p>无需上传文件。任务仅保存在内存中，离开前请下载结果。</p></div>
         </aside>
         </>}
       </div>
-      <section className="pdf-guide" id="pdf-guide" aria-label="使用指南与功能说明"><details><summary>使用指南与支持范围</summary><div><article><h2><Layers size={16} />整理与转换</h2><p>导入多份 PDF 后，所有页面按添加顺序排列。可拖拽或使用前移、后移按钮调整顺序；勾选页面后可批量旋转或删除，并支持最近 20 步撤销与重做。导入的 PNG / JPG 图片会居中排入 A4 页面，手机拍摄的照片建议先在图片工作台转正。</p></article><article><h2><CheckCheck size={16} />导出与识别</h2><p>提取模式只导出勾选的页面。拆分模式将每页单独存为 PDF，转图片模式按当前旋转角度渲染页面，两者均打包为 ZIP 下载。页码范围（如 1-3, 5）对应工作区当前排列顺序。OCR 支持导出中英文 TXT 或可搜索 PDF；压缩支持无损重存与有损扫描件降采样，导出前请留意对应说明。</p></article><article><h2><ShieldCheck size={16} />离线与支持边界</h2><p>首次联网打开生产版并显示“离线资源已就绪”后，含中英文 OCR 模型在内的功能均可断网使用。缓存仅保存程序资源，不存储你的文档；清理浏览器网站数据后需重新联网缓存。请通过 HTTPS 或 localhost 访问，不支持直接双击打开 HTML 文件。</p><p>仅支持静态 PDF，不支持加密文档、交互表单与数字签名字段，也不提供正文编辑、PDF 加密或内容脱敏；页面重组可能丢失书签与文档级附件。OCR 结果可能存在识别误差，有损压缩会移除原有文字层与链接，重要文档请保留原件。</p></article></div></details></section>
-      <footer className="pdf-footer"><span>FolioForge 页匠 · PDF 工作台</span><span role="status"><span className="live-dot" />{offline}</span></footer>
+      <section className="pdf-guide" id="pdf-guide" aria-label="使用指南与功能说明"><details><summary>使用指南与支持范围</summary><div><article><h2><Layers size={16} />页面整理</h2><p>导入多份 PDF 或 PNG / JPG 图片后，可拖拽卡片或使用上下箭头调整顺序，勾选页面后批量旋转或删除，支持 20 步撤销与重做。</p></article><article><h2><CheckCheck size={16} />导出与识别</h2><p>支持按页码范围（如 1-3, 5）提取、单页拆分打包 ZIP、批量转图片、中英文扫描件 OCR（导出 TXT 或可搜索 PDF）以及体积压缩。</p></article><article><h2><ShieldCheck size={16} />支持范围</h2><p>单个文件 ≤ 40 MiB，总计 ≤ 100 MiB，最多 200 页。不支持密码加密文档、交互表单与数字签名字段；有损压缩会移除原有文字层与链接。</p></article></div></details></section>
+      <footer className="pdf-footer"><span>FolioForge · 页匠</span><span role="status"><span className="live-dot" />{offline}</span></footer>
     </main>
     <span className="pdf-sr-only" aria-live="polite">{announcement}</span>
     <dialog ref={outputDialog} className="pdf-preview-dialog" onCancel={() => setOutputPreview(false)} onClick={event => { if (event.target === event.currentTarget) setOutputPreview(false); }} aria-label="PDF 输出预览">

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STACK_DIR=/opt/stacks/folioforge
+NEW_TAG=${1:-}
+if [[ $# -ne 1 || ! "$NEW_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
+    echo "Invalid image tag." >&2
+    exit 2
+fi
+test -f "$STACK_DIR/compose.yaml"
+exec 9>/run/lock/folioforge-deploy.lock
+flock -n 9 || { echo "Another FolioForge deployment is running." >&2; exit 3; }
+cd "$STACK_DIR"
+
+PREVIOUS_TAG=$(sed -n 's/^IMAGE_TAG=//p' .env 2>/dev/null || true)
+if [[ -n "$PREVIOUS_TAG" && ! "$PREVIOUS_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
+    echo "Invalid previous release configuration." >&2; exit 2
+fi
+
+# Only import an image stream. Release input cannot replace host scripts/config.
+gzip -dc | docker load
+REVISION=$(docker image inspect "folioforge:$NEW_TAG" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
+[[ "$REVISION" = "${NEW_TAG#sha-}" ]] || { echo "Image revision mismatch." >&2; exit 2; }
+if [[ "$NEW_TAG" = "$PREVIOUS_TAG" ]]; then
+    echo "Release tag is already active; use a new commit for a new deployment." >&2; exit 2
+fi
+
+write_tag() {
+    umask 077
+    printf 'IMAGE_TAG=%s\n' "$1" > .env.next
+    mv .env.next .env
+}
+healthy() {
+    local expected=$1 attempt
+    for ((attempt=0; attempt<20; attempt++)); do
+        if curl --fail --silent --max-time 3 http://127.0.0.1:18085/healthz >/dev/null \
+            && [[ "$(curl --fail --silent --max-time 3 http://127.0.0.1:18085/release.txt)" = "${expected#sha-}" ]]; then
+            return 0
+        fi
+        sleep 2
+    done
+    return 1
+}
+if [[ -f .env ]]; then cp -p .env .env.previous; fi
+write_tag "$NEW_TAG"
+if docker compose up -d --remove-orphans web && healthy "$NEW_TAG"; then
+    echo "Deployment healthy: $NEW_TAG"
+    exit 0
+fi
+
+echo "Deployment failed; restoring previous release." >&2
+docker compose logs --tail 60 web >&2 || true
+if [[ -n "$PREVIOUS_TAG" ]]; then
+    write_tag "$PREVIOUS_TAG"
+    docker compose up -d --remove-orphans web
+    healthy "$PREVIOUS_TAG" || { echo "Rollback also failed; operator intervention required." >&2; exit 5; }
+    echo "Rolled back to $PREVIOUS_TAG" >&2
+else
+    docker compose down
+    rm -f .env
+    echo "First deployment failed; stopped the failed service." >&2
+fi
+exit 4

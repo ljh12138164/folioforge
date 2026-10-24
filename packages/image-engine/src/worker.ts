@@ -2,7 +2,9 @@
 /// <reference path="./env.d.ts" />
 import { initializeImageMagick, MagickError } from '@imagemagick/magick-wasm';
 import wasmPath from '@imagemagick/magick-wasm/magick.wasm';
-import { convert, getCapabilities } from './convert';
+import heicWasmPath from '@pixelforge/heic-wasm/module.wasm';
+import vectorizerWasmPath from '@pixelforge/vectorizer-wasm/module.wasm';
+import { convert, getCapabilities, initializeHeic, initializeVectorizer } from './convert';
 import type { WorkerRequest, WorkerResponse } from './types';
 
 const scope = self as DedicatedWorkerGlobalScope;
@@ -12,9 +14,14 @@ function send(message: WorkerResponse, transfer: Transferable[] = []) {
 
 async function start() {
   try {
-    const response = await fetch(wasmPath);
-    if (!response.ok) throw new Error(`引擎文件加载失败 (${response.status})`);
-    await initializeImageMagick(new Uint8Array(await response.arrayBuffer()));
+    await Promise.all([wasmPath, heicWasmPath, vectorizerWasmPath].map(async (path, index) => {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`引擎文件加载失败 (${response.status})`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (index === 0) await initializeImageMagick(bytes);
+      else if (index === 1) await initializeHeic(bytes);
+      else await initializeVectorizer(bytes);
+    }));
     send({ type: 'ready', capabilities: getCapabilities() });
     scope.onmessage = ({ data: { id, bytes, options, sourceFormat } }: MessageEvent<WorkerRequest>) => {
       try {

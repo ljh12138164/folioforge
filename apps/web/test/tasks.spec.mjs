@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 test('persistent queue: pause, reload, resume, cancel and storage failure', async ({ page, context }, testInfo) => {
   const js = (source) => page.evaluate(source);
   const waitFor = (source) => page.waitForFunction(source);
-  const available = "!!document.querySelector('[aria-label=\"保存任务到此设备\"]') && !document.querySelector('[aria-label=\"保存任务到此设备\"]').disabled";
+  const available = "document.querySelector('.app-shell')?.getAttribute('aria-busy') === 'false'";
   const idle = "!document.querySelector('.convert-button').disabled";
   const click = (text) => page.getByRole('button', { name: text, exact: true }).click();
   const read = () => js(`new Promise((resolve, reject) => {
@@ -32,7 +32,7 @@ test('persistent queue: pause, reload, resume, cancel and storage failure', asyn
     if(${broken}) data.items.add(new File(['broken'], 'broken.png', {type:'image/png'}));
     const input=document.querySelector('input[type=file]'); input.files=data.files; input.dispatchEvent(new Event('change',{bubbles:true}));
   })()`);
-  const conversions = () => js(`(() => { window.__conversions=0; const send=Worker.prototype.postMessage; Worker.prototype.postMessage=function(...args) { if(args[0]?.options) window.__conversions++; return send.apply(this,args); }; })()`);
+  const conversions = () => js(`(() => { window.__conversions=0; const send=Worker.prototype.postMessage; Worker.prototype.postMessage=function(...args) { if(args[0]?.options && document.querySelector('.convert-button')?.textContent.includes('正在转换')) window.__conversions++; return send.apply(this,args); }; })()`);
   const startAndStop = (text) => js(`new Promise(resolve => {
     const timer=setInterval(() => {
       if(document.querySelector('.status-working')) {
@@ -45,14 +45,25 @@ test('persistent queue: pause, reload, resume, cancel and storage failure', asyn
 
   await page.goto('/convert/?format=PNG');
   await waitFor(available);
+  await expect(page.getByRole('checkbox', { name: '保存任务到此设备' })).toHaveCount(0);
+  await expect(page.getByText('任务自动保存在此设备', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.task-controls')).toHaveCount(0);
+  // A preference saved by the old opt-in version must not disable automatic saving.
+  await js(`new Promise(resolve => {
+    const request = indexedDB.open('pixelforge-tasks', 1);
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('settings', 'readwrite');
+      tx.objectStore('settings').put(false, 'enabled');
+      tx.oncomplete = () => { db.close(); resolve(); };
+    };
+  })`);
+  await reload();
   await waitFor("document.querySelector('footer').textContent.includes('引擎就绪')");
   await add(1);
   await waitFor(idle);
   await js("document.querySelector('.convert-button').click()");
   await waitFor("!!document.querySelector('.status-done') && !document.querySelector('.convert-button').disabled");
-  await js("document.querySelector('[aria-label=\"保存任务到此设备\"]').click()");
   await waitFor(available);
-  assert.equal(await js("document.querySelector('[aria-label=\"保存任务到此设备\"]').checked"), true);
   const original = await read();
   assert.equal(original.length, 1);
   assert.equal(original[0].status, 'done');
@@ -71,15 +82,53 @@ test('persistent queue: pause, reload, resume, cancel and storage failure', asyn
 
   const other = await context.newPage();
   try {
-    await other.goto('/convert/');
-    await expect(other.locator('.notice')).toContainText('另一窗口正在使用任务队列');
-    await expect(other.locator('.convert-button')).toBeDisabled();
+    await other.goto('/convert/?format=PNG');
+    await expect(other.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+    await expect(other.getByRole('status', { name: '工作区保存方式' })).toHaveCount(0);
+    await expect(other.getByRole('button', { name: '选择图片', exact: true })).toBeEnabled();
+    await expect(other.locator('.file-row')).toHaveCount(0);
+    await other.getByLabel('选择图片文件').setInputFiles({ name: 'independent.png', mimeType: 'image/png', buffer: await readFile(new URL('../public/sample-landscape.png', import.meta.url)) });
+    await expect(other.getByAltText('实际转换结果')).toBeVisible({ timeout: 30_000 });
+    await expect(other.locator('.convert-button')).toBeEnabled();
+    await other.locator('.convert-button').click();
+    await expect(other.locator('.status-done')).toHaveCount(1);
+    const independentDownload = other.waitForEvent('download');
+    await other.getByRole('button', { name: '下载 independent.png', exact: true }).click();
+    const independentFile = await independentDownload;
+    assert.equal((await readFile(await independentFile.path())).subarray(1, 4).toString(), 'PNG');
+    assert.deepEqual(await read(), original);
+    const workspace = await other.evaluate(() => sessionStorage.getItem('pixelforge-workspace'));
+    await other.reload();
+    await expect(other.locator('.file-info strong')).toHaveText('independent.png');
+    await expect(other.locator('.status-done')).toHaveCount(1);
+    assert.equal(await other.evaluate(() => sessionStorage.getItem('pixelforge-workspace')), workspace);
+    const popup = other.waitForEvent('popup');
+    await other.evaluate(() => window.open('/convert/'));
+    const duplicate = await popup;
+    try {
+      await expect(duplicate.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+      await expect(duplicate.locator('.file-row')).toHaveCount(0);
+      await expect(duplicate.getByRole('status', { name: '工作区保存方式' })).toHaveCount(0);
+      assert.notEqual(await duplicate.evaluate(() => sessionStorage.getItem('pixelforge-workspace')), workspace);
+    } finally { await duplicate.close(); }
+    await other.setViewportSize({ width: 310, height: 844 });
+    await expect.poll(() => other.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await other.screenshot({ path: testInfo.outputPath('independent-310.png'), fullPage: true });
+    await other.setViewportSize({ width: 1320, height: 1000 });
+    await other.screenshot({ path: testInfo.outputPath('independent-desktop.png'), fullPage: true });
+    await other.getByRole('button', { name: '清空', exact: true }).click();
+    await expect(other.locator('.file-row')).toHaveCount(0);
+    await expect(other.getByRole('status', { name: '工作区保存方式' })).toHaveCount(0);
+    assert.equal(await other.evaluate(() => !window.dispatchEvent(new Event('beforeunload', { cancelable: true }))), false);
+    await other.reload();
+    await expect(other.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+    await expect(other.locator('.file-row')).toHaveCount(0);
   } finally { await other.close(); }
   assert.deepEqual(await read(), original);
-  console.log('Second window cannot overwrite the active queue: passed');
+  console.log('Tabs independently save, restore, preview, convert, download and clear; copied sessions also get separate queues: passed');
 
   await click('清空');
-  await waitFor("document.querySelectorAll('.file-row').length === 0 && !document.querySelector('[aria-label=\"保存任务到此设备\"]').disabled");
+  await waitFor(`document.querySelectorAll('.file-row').length === 0 && (${available})`);
   assert.equal((await read()).length, 0);
   await js("[...document.querySelectorAll('.format-option')].find(b => b.textContent === 'PNG').click()");
   await add(8);
@@ -159,7 +208,7 @@ test('persistent queue: pause, reload, resume, cancel and storage failure', asyn
   console.log('Result write failure stops the queue without claiming completion: passed');
 
   await click('清空');
-  await waitFor("document.querySelectorAll('.file-row').length === 0 && !document.querySelector('[aria-label=\"保存任务到此设备\"]').disabled");
+  await waitFor(`document.querySelectorAll('.file-row').length === 0 && (${available})`);
   await add(1, true);
   await waitFor("document.querySelectorAll('.file-row').length === 2 && !document.querySelector('.convert-button').disabled");
   await js("document.querySelector('.convert-button').click()");
@@ -169,31 +218,58 @@ test('persistent queue: pause, reload, resume, cancel and storage failure', asyn
   await waitFor(idle);
   assert.equal(await js('window.__conversions'), 1);
   assert.equal(await js("document.querySelectorAll('.status-done').length"), 1);
-  await js("document.querySelector('[aria-label=\"保存任务到此设备\"]').click()");
+  await click('清空');
   await waitFor(available);
   assert.equal((await read()).length, 0);
   await reload();
   assert.equal(await js("document.querySelectorAll('.file-row').length"), 0);
-  console.log('Retry handles failed jobs only; disabling storage removes disk copies: passed');
+  console.log('Retry handles failed jobs only; clearing tasks removes disk copies: passed');
   await page.screenshot({ path: testInfo.outputPath('workspace.png'), fullPage: true });
 });
 
-test('saved input survives closing and relaunching the browser', async ({ playwright }, testInfo) => {
+test('a new tab starts empty after the original closes', async ({ page, context }) => {
+  await page.goto('/convert/?format=PNG');
+  await expect(page.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+  await page.getByLabel('选择图片文件').setInputFiles({ name: 'saved.png', mimeType: 'image/png', buffer: await readFile(new URL('../public/sample-landscape.png', import.meta.url)) });
+  await expect(page.locator('.file-row')).toHaveCount(1);
+  await expect(page.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+  await page.close();
+  const next = await context.newPage();
+  await next.goto('/convert/');
+  await expect(next.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+  await expect(next.locator('.file-row')).toHaveCount(0);
+  await expect(next.getByRole('status', { name: '工作区保存方式' })).toHaveCount(0);
+  await expect(next.getByRole('button', { name: '添加图片', exact: true })).toBeEnabled();
+});
+
+test('unavailable browser storage leaves a usable temporary workspace', async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'locks', { value: undefined }); });
+  await page.goto('/convert/');
+  await expect(page.getByRole('status', { name: '工作区保存方式' })).toContainText('此浏览器暂不支持自动保存任务');
+  await expect(page.getByRole('button', { name: '选择图片', exact: true })).toBeEnabled();
+  await expect(page.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+});
+
+test('saved tab tasks survive browser restart without appearing in a new tab', async ({ playwright }, testInfo) => {
   const profile = testInfo.outputPath('profile');
   const launch = () => playwright.chromium.launchPersistentContext(profile, { headless: true, channel: testInfo.project.use.channel });
   let context = await launch();
   try {
     let page = await context.newPage();
     await page.goto('http://127.0.0.1:43188/convert/?format=PNG');
-    await page.getByRole('checkbox', { name: '保存任务到此设备', exact: true }).click();
-    await expect(page.getByRole('checkbox', { name: '保存任务到此设备', exact: true })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: '保存任务到此设备', exact: true })).toBeEnabled();
+    await expect(page.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
     await page.locator('input[type=file]').setInputFiles({ name: 'restart.png', mimeType: 'image/png', buffer: await readFile(new URL('../public/sample-landscape.png', import.meta.url)) });
     await expect(page.locator('.file-row')).toHaveCount(1);
+    const workspace = await page.evaluate(() => sessionStorage.getItem('pixelforge-workspace'));
     await context.close();
     context = await launch();
     page = await context.newPage();
     await page.goto('http://127.0.0.1:43188/convert/');
+    await expect(page.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.file-row')).toHaveCount(0);
+    // Reattach the identity retained when the browser restores the original tab.
+    await page.evaluate(id => sessionStorage.setItem('pixelforge-workspace', id), workspace);
+    await page.reload();
     await expect(page.locator('.file-info strong')).toHaveText('restart.png');
     await page.locator('.convert-button').click();
     await expect(page.locator('.status-done')).toHaveCount(1);

@@ -4,7 +4,7 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const shots = resolve('../../.impeccable/review/pdf-next');
+const shots = resolve('work/test-results/visual/pdf-next');
 const readPdf = bytes => getDocument({ data: bytes.slice(), standardFontDataUrl: resolve('node_modules/pdfjs-dist/standard_fonts').replaceAll('\\', '/') + '/' }).promise;
 async function capture(page, name) {
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));

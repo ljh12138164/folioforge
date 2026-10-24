@@ -19,7 +19,7 @@ async function prepare(page, memory = 8, failure = '', overlap = false) {
         this.addEventListener('error', () => { window.__work.active -= this.pending.size; this.pending.clear(); });
       }
       postMessage(data, ...rest) {
-        if (data.options) {
+        if (data.options && document.querySelector('.task-run-controls')) {
           const width = new DataView(data.bytes).getUint32(16);
           const stats = window.__work;
           stats.active++;
@@ -54,7 +54,7 @@ async function prepare(page, memory = 8, failure = '', overlap = false) {
   }, { memory, failure, overlap });
   await page.goto('/convert/?format=JPEG');
   await expect(page.locator('footer')).toContainText('引擎就绪');
-  await expect(page.getByRole('checkbox', { name: '保存任务到此设备' })).toBeEnabled();
+  await expect(page.locator('.app-shell')).toHaveAttribute('aria-busy', 'false');
 }
 
 async function add(page, sizes) {
@@ -79,6 +79,7 @@ async function add(page, sizes) {
 test('real conversions overlap, large images run alone, and idle engines are released', async ({ page }, testInfo) => {
   await prepare(page, 8, '', true);
   await add(page, [[1600, 1200], [1601, 1200], [1602, 1200], [1603, 1200], [4000, 2400], [1604, 1200], [1605, 1200]]);
+  await expect(page.getByRole('img', { name: '实际转换结果', exact: true })).toBeVisible();
   await page.locator('.convert-button').click();
   await expect(page.locator('.status-done')).toHaveCount(7, { timeout: process.env.CI ? 120_000 : 60_000 });
   await expect(page.locator('.convert-button')).toBeEnabled();
@@ -109,6 +110,7 @@ for (const failure of ['once', 'always', 'crash']) {
     await expect(page.locator('.status-done')).toHaveCount(failure === 'always' ? 3 : 4);
     await expect(page.locator('.status-error')).toHaveCount(failure === 'always' ? 1 : 0);
     expect(stats.active).toBe(0);
-    expect(stats.live).toBe(1);
+    // A failed selected image may start its temporary comparison preview after the queue unlocks.
+    await expect.poll(() => page.evaluate(() => window.__work.live)).toBe(1);
   });
 }

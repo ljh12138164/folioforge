@@ -3,13 +3,27 @@ import {
   MagickGeometry, MagickImageInfo, MagickReadSettings,
 } from '@imagemagick/magick-wasm';
 import type { IMagickImage } from '@imagemagick/magick-wasm';
+import initHeic, { encode_heic } from '@pixelforge/heic-wasm';
+import initVectorizer, { vectorize_svg } from '@pixelforge/vectorizer-wasm';
 import { formats, MAX_FILE_BYTES, MAX_PIXELS } from './types.ts';
 import type { Capability, Conversion, ConvertOptions, FormatId } from './types.ts';
+
+let heicReady = false;
+let vectorizerReady = false;
+export async function initializeHeic(bytes: Uint8Array<ArrayBuffer>) {
+  await initHeic({ module_or_path: bytes });
+  heicReady = true;
+}
+
+export async function initializeVectorizer(bytes: Uint8Array<ArrayBuffer>) {
+  await initVectorizer({ module_or_path: bytes });
+  vectorizerReady = true;
+}
 
 export function getCapabilities(): Capability[] {
   return formats.map(({ id }) => {
     const info = Magick.supportedFormats.find((item) => item.format === id);
-    return { id, read: id === 'SVG' || (info?.supportsReading ?? false), write: id !== 'SVG' && (info?.supportsWriting ?? false) };
+    return { id, read: id === 'SVG' || (info?.supportsReading ?? false), write: id === 'HEIC' ? heicReady : id === 'SVG' ? vectorizerReady : (info?.supportsWriting ?? false) };
   });
 }
 
@@ -38,6 +52,7 @@ export function convert(bytes: Uint8Array, options: ConvertOptions, sourceFormat
     }
   }
   if (!/^#[0-9a-f]{6}$/i.test(options.background)) throw new Error('无效的背景颜色。');
+  if (options.format === 'SVG' && !['poster', 'bw', 'photo'].includes(options.svgPreset ?? 'poster')) throw new Error('无效的 SVG 描摹模式。');
   const inputFormat = sourceFormat as MagickFormat | undefined;
   const settings = new MagickReadSettings({ frameCount: 2, format: inputFormat });
   const info = MagickImageInfo.create(bytes, new MagickReadSettings({ format: inputFormat }));
@@ -59,19 +74,30 @@ export function convert(bytes: Uint8Array, options: ConvertOptions, sourceFormat
     const before = thumbnail(image);
     const scale = Math.min(1, (options.maxWidth ?? image.width) / image.width, (options.maxHeight ?? image.height) / image.height,
       options.format === 'ICO' ? 256 / Math.max(image.width, image.height) : 1);
-    if (scale < 1) image.resize(Math.max(1, Math.round(image.width * scale)), Math.max(1, Math.round(image.height * scale)));
+    if (scale < 1) {
+      const geometry = new MagickGeometry(Math.max(1, Math.round(image.width * scale)), Math.max(1, Math.round(image.height * scale)));
+      // The shared scale already preserves aspect ratio; avoid a second fit after rounding.
+      geometry.ignoreAspectRatio = true;
+      image.resize(geometry);
+    }
     image.quality = options.quality;
-    if (options.format === 'JPEG' || options.format === 'BMP') {
+    if (options.format === 'SVG' && image.width * image.height > 4_000_000) throw new Error('SVG 描摹最多支持 400 万像素，请先调整最大宽高，例如 2000 × 2000。');
+    if (options.format === 'JPEG' || options.format === 'BMP' || options.format === 'HEIC' || options.format === 'SVG') {
       image.colorSpace = ColorSpace.sRGB;
       image.backgroundColor = new MagickColor(options.background);
       image.alpha(AlphaAction.Remove);
     }
-    if (options.stripMetadata) image.strip();
+    if (options.stripMetadata || options.format === 'HEIC' || options.format === 'SVG') image.strip();
     const width = image.width;
     const height = image.height;
-    const data = image.write(options.format as MagickFormat, (result) => new Uint8Array(result));
+    const data = options.format === 'SVG'
+      ? image.getPixels((pixels) => new TextEncoder().encode(vectorize_svg(pixels.toByteArray(0, 0, width, height, 'RGBA')!, width, height, options.svgPreset ?? 'poster')))
+      : options.format === 'HEIC'
+      ? image.getPixels((pixels) => new Uint8Array(encode_heic(pixels.toByteArray(0, 0, width, height, 'RGBA')!, width, height, options.quality)))
+      : image.write(options.format as MagickFormat, (result) => new Uint8Array(result));
     // Decode the exported bytes so the preview includes actual compression artifacts.
-    const after = ImageMagick.read(data, options.format as MagickFormat, (output) => thumbnail(output));
+    // The browser client renders the generated SVG itself; no external SVG delegate is required.
+    const after = options.format === 'SVG' ? new Uint8Array(0) : ImageMagick.read(data, options.format as MagickFormat, (output) => thumbnail(output));
     return { data, before, after, width, height, originalWidth, originalHeight, sourceFormat: info.format };
   });
 }

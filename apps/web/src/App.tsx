@@ -8,11 +8,12 @@ import {
 } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { createEngine, formats, MAX_FILE_BYTES } from '@pixelforge/image-engine';
-import type { Capability, ConvertOptions } from '@pixelforge/image-engine';
+import type { Capability, Conversion, ConvertOptions } from '@pixelforge/image-engine';
 import { SiteHeader } from './SiteHeader';
 import { openTaskStore } from './task-store';
 import type { Task, TaskOutput } from './task-store';
 import { concurrencyFor, needsExclusive, runQueue } from './task-runner';
+import { ImageComparison } from './ImageComparison';
 
 type Output = TaskOutput & { url: string; before: string; after: string };
 type Item = Omit<Task, 'output'> & { sourceUrl: string; output?: Output };
@@ -49,15 +50,13 @@ export function App() {
   const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState('');
   const [modal, setModal] = useState<'formats' | 'help' | null>(null);
-  const [split, setSplit] = useState(50);
-  const [previewError, setPreviewError] = useState<string>();
+  const [preview, setPreview] = useState<{ key: string; output?: Output; error?: string }>();
   const [processed, setProcessed] = useState(0);
   const [processingTotal, setProcessingTotal] = useState(0);
   const [parallelism, setParallelism] = useState(1);
   const [advancedFormats, setAdvancedFormats] = useState(false);
   const [queueLoading, setQueueLoading] = useState(true);
-  const [queueBlocked, setQueueBlocked] = useState(false);
-  const [storageAvailable, setStorageAvailable] = useState(false);
+  const [temporaryReason, setTemporaryReason] = useState('');
   const [persistent, setPersistent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -78,8 +77,12 @@ export function App() {
   const ready = capabilities.length > 0 && !engineError;
   const originalTotal = done.reduce((sum, item) => sum + item.file.size, 0);
   const outputTotal = done.reduce((sum, item) => sum + item.output!.size, 0);
-  const locked = queueLoading || queueBlocked || saving;
+  const locked = queueLoading || saving;
   const resumable = items.some((item) => item.status === 'paused' || item.status === 'interrupted' || (item.status === 'waiting' && item.options));
+  const previewKey = `${active?.id}:${JSON.stringify(options)}`;
+  const currentOutput = active?.output && JSON.stringify(active.options) === JSON.stringify(options) ? active.output : undefined;
+  const comparison = currentOutput ?? (!busy && !locked && ready && preview?.key === previewKey ? preview.output : undefined);
+  const comparisonError = preview?.key === previewKey ? preview.error : undefined;
 
   useEffect(() => {
     let active = true;
@@ -88,7 +91,7 @@ export function App() {
     const lifetime = new Promise<void>((resolve) => { unlock = resolve; });
     function applyOptions(saved = initialOptions) {
       const query = new URLSearchParams(window.location.search);
-      const requested = formats.find((item) => item.id === query.get('format') && !['HEIC', 'SVG'].includes(item.id));
+      const requested = formats.find((item) => item.id === query.get('format'));
       const quality = Number(query.get('quality'));
       const width = Number(query.get('maxWidth'));
       const next = { ...saved,
@@ -99,44 +102,49 @@ export function App() {
       setOptions(next);
       if (!formats.slice(0, 8).some((item) => item.id === next.format)) setAdvancedFormats(true);
     }
+    function useTemporaryWorkspace(reason: string) {
+      setPersistent(false);
+      applyOptions();
+      setTemporaryReason(reason);
+      setQueueLoading(false);
+    }
     async function initialize() {
       if (!navigator.locks) {
-        applyOptions();
-        setMessage('此浏览器不支持任务存储锁，本次仅在内存中处理，请在关闭前下载结果。');
-        setQueueLoading(false);
+        useTemporaryWorkspace('此浏览器暂不支持自动保存任务。');
         return;
       }
-      await navigator.locks.request('pixelforge-task-queue', { ifAvailable: true }, async (lock) => {
+      let workspace = sessionStorage.getItem('pixelforge-workspace');
+      if (!workspace) {
+        // The first tab keeps access to tasks saved before tab isolation existed.
+        workspace = localStorage.getItem('pixelforge-workspaces-enabled') ? crypto.randomUUID() : 'legacy';
+        sessionStorage.setItem('pixelforge-workspace', workspace);
+      }
+      const queueLock = workspace === 'legacy' ? 'pixelforge-task-queue' : `pixelforge-task-queue:${workspace}`;
+      await navigator.locks.request(queueLock, { ifAvailable: true }, async (lock) => {
         if (!active) return;
         if (!lock) {
-          setQueueBlocked(true);
-          setQueueLoading(false);
-          setMessage('另一窗口正在使用任务队列。请关闭该窗口后重新加载此页面。');
+          // Duplicated tabs can inherit sessionStorage; give the copy its own queue.
+          sessionStorage.setItem('pixelforge-workspace', crypto.randomUUID());
+          await initialize();
           return;
         }
+        if (workspace === 'legacy') localStorage.setItem('pixelforge-workspaces-enabled', 'true');
         let client: Awaited<ReturnType<typeof openTaskStore>> | undefined;
         try {
-          client = await openTaskStore();
+          client = await openTaskStore(workspace);
           const saved = await client.load();
           if (!active) return;
           store.current = client;
-          setStorageAvailable(true);
-          setPersistent(saved.enabled);
-          applyOptions(saved.enabled ? saved.options : undefined);
-          if (saved.enabled) {
-            const tasks = saved.tasks.sort((a, b) => a.order - b.order).map((task): Task => task.status === 'working' ? { ...task, status: 'interrupted' } : task);
-            await client.put(tasks.filter((task) => task.status === 'interrupted'));
-            if (!active) return;
-            updateItems(tasks.map((task) => ({ ...task, sourceUrl: makeUrl(task.file), output: task.output ? showOutput(task.output) : undefined })));
-            if (tasks.length) setMessage('已恢复保存在此设备的任务。已完成结果可下载，未完成任务可继续。');
-          }
+          setPersistent(true);
+          applyOptions(saved.options);
+          void navigator.storage?.persist?.().catch(() => false);
+          const tasks = saved.tasks.sort((a, b) => a.order - b.order).map((task): Task => task.status === 'working' ? { ...task, status: 'interrupted' } : task);
+          await client.put(tasks.filter((task) => task.status === 'interrupted'));
+          if (!active) return;
+          updateItems(tasks.map((task) => ({ ...task, sourceUrl: makeUrl(task.file), output: task.output ? showOutput(task.output) : undefined })));
+          if (tasks.length) setMessage('已恢复此标签页的任务。已完成结果可下载，未完成任务可继续。');
         } catch {
-          if (active) {
-            setStorageAvailable(false);
-            setPersistent(false);
-            applyOptions();
-            setMessage('无法打开本地任务存储。本次仅在内存中处理，请在关闭前下载结果。');
-          }
+          if (active) useTemporaryWorkspace('暂时无法访问本机的任务存储。');
         } finally {
           if (active) setQueueLoading(false);
           await lifetime;
@@ -144,9 +152,16 @@ export function App() {
         }
       });
     }
-    void initialize().catch(() => { if (active) { setQueueLoading(false); setQueueBlocked(true); setMessage('无法取得任务队列锁，请重新加载页面。'); } });
+    void initialize().catch(() => { if (active) useTemporaryWorkspace('暂时无法启用自动保存。'); });
     return () => { active = false; mounted.current = false; unlock!(); };
   }, []);
+
+  useEffect(() => {
+    if (!temporaryReason || !items.length) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [temporaryReason, items.length]);
 
   function updateItems(next: Item[]) { itemsRef.current = next; setItems(next); }
 
@@ -160,32 +175,48 @@ export function App() {
   function showOutput(output: TaskOutput): Output {
     return { ...output, url: makeUrl(output.files.data), before: makeUrl(output.files.before), after: makeUrl(output.files.after) };
   }
-
-  async function edit(action: () => Promise<void>) {
-    if (editing.current || running.current || queueLoading || queueBlocked) return;
-    editing.current = true;
-    setSaving(true);
-    try { await action(); }
-    catch { setMessage('无法保存任务变更，请检查设备存储空间。变更未应用，可关闭任务保存后再试。'); }
-    finally { editing.current = false; if (mounted.current) setSaving(false); }
+  function conversionOutput(file: File, options: ConvertOptions, result: Conversion): Output {
+    const format = formats.find((entry) => entry.id === options.format)!;
+    return showOutput({
+      files: {
+        data: new Blob([result.data], { type: format.mime }),
+        before: new Blob([result.before], { type: 'image/png' }),
+        after: new Blob([result.after], { type: 'image/png' }),
+      },
+      name: `${file.name.replace(/\.[^.]+$/, '')}.${format.extension}`,
+      size: result.data.byteLength, width: result.width, height: result.height,
+      originalWidth: result.originalWidth, originalHeight: result.originalHeight, format: format.label,
+    });
   }
 
-  async function togglePersistence(enabled: boolean) {
-    await edit(async () => {
-      if (!store.current) return;
-      if (enabled) {
-        const estimate = await navigator.storage?.estimate().catch(() => undefined);
-        const bytes = itemsRef.current.reduce((sum, item) => sum + item.file.size + (item.output ? item.output.files.data.size + item.output.files.before.size + item.output.files.after.size : 0), 0);
-        if (estimate?.quota !== undefined && bytes > estimate.quota - (estimate.usage ?? 0)) throw new Error('存储空间不足');
-      }
-      await store.current.setEnabled(enabled, itemsRef.current.map(stored), options);
-      setPersistent(enabled);
-      setMessage(enabled ? '任务和图片已保存在此设备。清除网站数据会删除这些任务。' : '已删除磁盘中的任务副本，当前列表仍可继续使用。');
-      if (enabled) {
-        const retained = await navigator.storage?.persist?.().catch(() => false);
-        if (!retained) setMessage('任务已保存；浏览器未授予持久存储，空间不足时可能回收。请及时下载结果。');
-      }
-    });
+  useEffect(() => {
+    if (!active || !ready || busy || locked || currentOutput) return;
+    let cancelled = false;
+    let client: ReturnType<typeof createEngine> | undefined;
+    let output: Output | undefined;
+    setPreview({ key: previewKey });
+    const timer = setTimeout(async () => {
+      client = newEngine();
+      try {
+        const result = await client.convert(active.file, options);
+        if (cancelled) return;
+        output = conversionOutput(active.file, options, result);
+        setPreview({ key: previewKey, output });
+      } catch (error) {
+        if (!cancelled) setPreview({ key: previewKey, error: error instanceof Error ? error.message : '预览转换失败，请重试。' });
+      } finally { client.dispose(); }
+    }, 350);
+    return () => { cancelled = true; clearTimeout(timer); client?.dispose(); releaseOutput(output); };
+  }, [previewKey, active?.output, ready, busy, locked]);
+
+  async function edit(action: () => Promise<void>) {
+    if (editing.current || running.current || queueLoading) return;
+    editing.current = true;
+    setPreview(undefined);
+    setSaving(true);
+    try { await action(); }
+    catch { setMessage('无法保存任务变更，请检查设备存储空间后重试。变更未应用。'); }
+    finally { editing.current = false; if (mounted.current) setSaving(false); }
   }
 
   useEffect(() => {
@@ -277,6 +308,7 @@ export function App() {
     const cancelled = () => signal.mode === 'cancel';
     control.current = signal;
     running.current = true;
+    setPreview(undefined);
     setBusy(true);
     setProcessed(0);
     setParallelism(limit);
@@ -308,17 +340,7 @@ export function App() {
         }
         const result = await worker.convert(item.file, item.options!);
         if (!mounted.current) return;
-        const format = formats.find((entry) => entry.id === item.options!.format)!;
-        const output = showOutput({
-          files: {
-            data: new Blob([result.data], { type: format.mime }),
-            before: new Blob([result.before], { type: 'image/png' }),
-            after: new Blob([result.after], { type: 'image/png' }),
-          },
-          name: `${item.file.name.replace(/\.[^.]+$/, '')}.${format.extension}`,
-          size: result.data.byteLength, width: result.width, height: result.height,
-          originalWidth: result.originalWidth, originalHeight: result.originalHeight, format: format.label,
-        });
+        const output = conversionOutput(item.file, item.options!, result);
         completed = { ...item, status: cancelled() ? 'cancelled' : 'done', output: cancelled() ? undefined : output };
         if (cancelled()) releaseOutput(output);
       } catch (error) {
@@ -366,7 +388,7 @@ export function App() {
     } catch {
       if (mounted.current) {
         updateItems(itemsRef.current.map((item) => item.status === 'working' ? { ...item, status: 'interrupted' } : item.status === 'waiting' && item.options ? { ...item, status: 'paused' } : item));
-        setMessage('任务保存失败，已停止领取新图片。请检查存储空间后继续，或关闭任务保存后处理。');
+        setMessage('任务保存失败，已停止领取新图片。请检查存储空间后继续。');
       }
     } finally {
       extraEngines.current.forEach((extra) => extra.dispose());
@@ -402,21 +424,25 @@ export function App() {
     finally { setZipping(false); }
   }
 
-  return <div className="app-shell" onDragOver={(event) => { event.preventDefault(); if (!busy) setDragging(true); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }} onDrop={(event) => { event.preventDefault(); setDragging(false); addFiles(Array.from(event.dataTransfer.files)); }}>
+  return <div className="app-shell" aria-busy={locked} onDragStart={(event) => event.preventDefault()} onDragOver={(event) => { event.preventDefault(); setDragging(!busy && !locked && event.dataTransfer.types.includes('Files')); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }} onDrop={(event) => { event.preventDefault(); setDragging(false); if (event.dataTransfer.types.includes('Files')) void addFiles(Array.from(event.dataTransfer.files)); }}>
     <SiteHeader active="convert" onFormats={() => setModal('formats')} onHelp={() => setModal('help')} />
 
     <main>
-      <section className="intro workspace-intro">
-        <div><h1>转换工作台</h1><p>批量导入图片，统一设置目标格式、编码质量与最大尺寸。</p></div>
-        <div className="workspace-label"><span>01 导入图片 → 02 选择格式 → 03 下载结果</span></div>
+      <section className="pdf-studio-bar workspace-intro">
+        <div className="pdf-studio-title">
+          <h1>图片转换工作台</h1>
+          <span className="pdf-studio-sep" aria-hidden="true" />
+          <span className="pdf-mode-badge">{target.label}</span>
+          <p className="pdf-mode-summary">批量导入图片，统一设置目标格式、编码质量与最大尺寸。</p>
+        </div>
+        <span className="pdf-status-pill"><LockKeyhole size={12} />{temporaryReason ? '临时工作区 · 关闭前请下载' : items.length ? `队列 ${items.length} 张 · 已完成 ${done.length} 张` : '本机编码 · 文件不上传'}</span>
       </section>
-      <div className="task-controls" aria-label="任务保存与恢复">
-        <label className="checkbox-row"><input type="checkbox" aria-label="保存任务到此设备" checked={persistent} disabled={!storageAvailable || busy || zipping || locked} onChange={(event) => void togglePersistence(event.target.checked)} /><span><strong>保存任务到此设备</strong><small>{queueLoading ? '正在读取任务…' : persistent ? '图片和结果保存在本地，重开后可继续；清除网站数据会删除任务' : '未开启时，刷新或关闭会清空任务'}</small></span></label>
-        {saving && <span role="status">正在保存…</span>}
-        {queueBlocked && <button onClick={() => window.location.reload()}>重新加载</button>}
+      {temporaryReason && <div className="workspace-session-notice" role="status" aria-label="工作区保存方式"><CircleHelp size={17} /><div><strong>此窗口为临时工作区，关闭前请下载结果</strong><p>{temporaryReason} 当前窗口的图片和结果不会自动保存，刷新或关闭后将丢失。</p></div></div>}
+      {(saving || (!busy && (resumable || items.some((item) => item.status === 'error')))) && <div className="task-controls" aria-label="任务保存与恢复">
+        {saving && <span role="status">{persistent ? '正在保存…' : '正在更新…'}</span>}
         {!busy && resumable && <button disabled={locked || !ready} onClick={() => void run('all')}>按当前设置重新转换全部</button>}
         {!busy && items.some((item) => item.status === 'error') && <button disabled={locked || !ready} onClick={() => void run('retry')}>重试失败项</button>}
-      </div>
+      </div>}
       <section className="workspace">
         <div className="workspace-main">
           <div className="panel-heading"><h2><FolderOpen size={17} />你的图片<span className="count">{items.length.toString().padStart(2, '0')}</span></h2><div className="toolbar">{!!items.length && <button disabled={busy || zipping || locked} onClick={() => void clearItems()}><Trash2 size={14} />清空</button>}<button disabled={busy || locked} onClick={() => inputRef.current?.click()}><Plus size={16} />添加图片</button></div></div>
@@ -425,44 +451,39 @@ export function App() {
             <div className="import-icon" aria-hidden="true"><ImagePlus size={46} strokeWidth={1.2} /></div>
             <h3>把图片拖到这里</h3><p>或者从设备中选择，一次可以添加多张</p><button className="primary import-button" disabled={locked} onClick={() => inputRef.current?.click()}><Upload size={17} />选择图片<ArrowUpRight size={16} /></button><div className="drop-hint">支持 JPG、PNG、WebP、AVIF、HEIC 等格式<span>单张最大 40 MB</span></div><div className="sample-line">手边没有图片？<button disabled={locked} onClick={loadSample}>试试这张示例<ArrowRight size={13} /></button></div>
           </div> : <>
-            <div className="preview-toolbar"><span><span className="live-dot" />{active?.output ? '转换效果对比' : '原图预览'}</span><span>{active?.output ? `${active.output.originalWidth} × ${active.output.originalHeight} → ${active.output.width} × ${active.output.height}` : active?.file.name}</span></div>
-            <div className={`preview checkerboard${active?.output ? ' has-result' : ''}`} style={active?.output ? { aspectRatio: `${active.output.originalWidth} / ${active.output.originalHeight}` } : undefined}>
-              {active?.output ? <div className="compare-images"><img src={active.output.after} alt="转换后的图片" style={{ clipPath: `inset(0 0 0 ${split}%)` }} /><img className="before-image" src={active.output.before} alt="转换前的图片" style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }} /><span className="compare-label label-before">原图</span><span className="compare-label label-after">{active.output.format}</span><div className="compare-divider" style={{ left: `${split}%` }}><span><SlidersHorizontal size={14} /></span></div><input aria-label="拖动以对比转换前后图片" type="range" min="0" max="100" value={split} onChange={(event) => setSplit(Number(event.target.value))} /></div> : <><img key={active?.id} className="source-image" src={active?.sourceUrl} alt="待转换图片预览" style={{ display: previewError === active?.id ? 'none' : undefined }} onError={() => setPreviewError(active?.id)} /><div className="preview-fallback" style={{ display: previewError === active?.id ? undefined : 'none' }}><FileImage size={40} strokeWidth={1} /><span>浏览器无法直接显示的格式<br />转换完成后即可预览</span></div></>}
-              {active?.status === 'working' && <div className="working-overlay"><LoaderCircle className="spin" size={26} /><span>正在本地转换…</span></div>}
-            </div>
+            {active && <ImageComparison key={comparison?.url ?? previewKey} source={active.sourceUrl} file={active.file} result={comparison} targetFormat={target.label} working={!comparison && !comparisonError} previewError={comparisonError} />}
             <div className="file-list">{items.map((item, index) => <div key={item.id} className={`file-row ${active?.id === item.id ? 'selected' : ''}`}><button className="file-select" onClick={() => setSelected(item.id)} aria-label={`预览 ${item.file.name}`}><span className="file-number">{String(index + 1).padStart(2, '0')}</span><span className={`file-icon ${item.status === 'done' ? 'done' : ''}`}>{item.status === 'working' ? <LoaderCircle size={20} className="spin" /> : item.status === 'done' ? <Check size={20} /> : <FileImage size={20} />}</span><span className="file-info"><strong>{item.file.name}</strong><span>{size(item.file.size)}{item.output && <> <ArrowRight size={11} /> <b>{size(item.output.size)}</b> <span className="result-format">{item.output.format}</span></>}{item.error && <span className="file-error">{item.error}</span>}</span></span></button><span className={`status status-${item.status}`}>{statusNames[item.status]}</span>{item.output && <button className="icon-button" aria-label={`下载 ${item.output.name}`} onClick={() => save(item.output!.url, item.output!.name)}><ArrowDownToLine size={17} /></button>}<button className="icon-button remove" disabled={busy || zipping || locked} aria-label={`移除 ${item.file.name}`} onClick={() => removeItem(item)}><X size={16} /></button></div>)}</div>
             <button className="add-more" disabled={busy || locked} onClick={() => inputRef.current?.click()}><Plus size={15} />继续添加，或直接拖入更多图片</button>
           </>}
           <input ref={inputRef} className="sr-only" aria-label="选择图片文件" type="file" multiple accept={accept} disabled={busy || locked} onChange={(event) => { void addFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
-          <div className="workspace-bottom"><span><LockKeyhole size={13} />本地处理 · 无需注册 · 无上传</span><span>也支持粘贴图片 <kbd>Ctrl</kbd> + <kbd>V</kbd></span></div>
+          <div className="workspace-bottom"><span>单张最大 40 MB · 4800 万像素</span><span>支持粘贴剪贴板图片 <kbd>Ctrl</kbd> + <kbd>V</kbd></span></div>
         </div>
 
         <aside className="settings">
           <div className="panel-heading"><h2><SlidersHorizontal size={17} />转换设置</h2><span className="settings-dot" /></div>
           <fieldset disabled={busy || zipping || locked}>
-            <div className="setting-section format-section"><div className="field-title"><label>目标格式</label><button className="text-button" onClick={() => setAdvancedFormats(!advancedFormats)}>{advancedFormats ? '收起' : '更多格式'}<ChevronDown size={13} className={advancedFormats ? 'rotate' : ''} /></button></div><div className="format-grid">{(advancedFormats ? writable : formats.slice(0, 8)).map((format) => {
-              const supported = capabilities.some((item) => item.id === format.id && item.write);
-              return <button key={format.id} disabled={!supported} aria-pressed={options.format === format.id} title={supported ? format.description : ready ? '当前引擎不支持导出此格式' : '引擎加载中'} className={`format-option ${options.format === format.id ? 'chosen' : ''}`} onClick={() => setOptions({ ...options, format: format.id })}>{format.label}{options.format === format.id && <Check size={12} />}</button>;
-            })}</div><div className="format-note">{target.description}{target.id === 'ICO' && ' · 最长边 256px'}</div></div>
+            <div className="setting-section format-section"><div className="field-title"><label>目标格式</label>{writable.length > 8 && <button className="text-button" onClick={() => setAdvancedFormats(!advancedFormats)}>{advancedFormats ? '收起' : '更多格式'}<ChevronDown size={13} className={advancedFormats ? 'rotate' : ''} /></button>}</div><div className="format-grid">{(advancedFormats ? writable : writable.slice(0, 8)).map((format) => {
+              return <button key={format.id} aria-pressed={options.format === format.id} title={format.description} className={`format-option ${options.format === format.id ? 'chosen' : ''}`} onClick={() => setOptions({ ...options, format: format.id })}>{format.label}{options.format === format.id && <Check size={12} />}</button>;
+            })}</div><div className="format-note">{target.description}{target.id === 'ICO' && ' · 最长边 256px'}{target.id === 'HEIC' && ' · 8 位静态图，始终移除元数据；大图编码较慢'}</div></div>
 
-            <div className="setting-section"><div className="field-title"><label htmlFor="quality">图片质量</label><output htmlFor="quality" className="quality-value">{target.lossy ? options.quality : '—'}<span>{target.lossy ? '%' : '无损 / 固定编码'}</span></output></div><input id="quality" className="quality-slider" type="range" min="1" max="100" value={options.quality} disabled={!target.lossy} onChange={(event) => setOptions({ ...options, quality: Number(event.target.value) })} style={{ '--range': `${options.quality}%` } as React.CSSProperties} /><div className="range-labels"><span>更小体积</span><span>更高画质</span></div></div>
+            {options.format === 'SVG' ? <div className="setting-section"><div className="field-title" id="svg-preset-label">矢量描摹模式</div><div className="format-grid svg-preset-grid" role="group" aria-labelledby="svg-preset-label">{([{ id: 'poster', label: '彩色图标' }, { id: 'bw', label: '黑白线稿' }, { id: 'photo', label: '照片描摹' }] as const).map((preset) => <button key={preset.id} className={`format-option${(options.svgPreset ?? 'poster') === preset.id ? ' chosen' : ''}`} aria-pressed={(options.svgPreset ?? 'poster') === preset.id} onClick={() => setOptions({ ...options, svgPreset: preset.id })}>{preset.label}</button>)}</div><p className="field-help">生成可缩放的路径；照片为近似描摹，文字转为轮廓。最多 400 万像素。</p></div> : target.lossy && <div className="setting-section"><div className="field-title"><label htmlFor="quality">图片质量</label><output htmlFor="quality" className="quality-value">{target.lossy ? options.quality : '—'}<span>{target.lossy ? '%' : '无损 / 固定编码'}</span></output></div><input id="quality" className="quality-slider" type="range" min="1" max="100" value={options.quality} disabled={!target.lossy} onChange={(event) => setOptions({ ...options, quality: Number(event.target.value) })} style={{ '--range': `${options.quality}%` } as React.CSSProperties} /><div className="range-labels"><span>更小体积</span><span>更高画质</span></div></div>}
 
             <div className="setting-section"><div className="field-title"><label htmlFor="max-width">调整尺寸</label><span className="subtle"><Maximize2 size={11} />保持比例</span></div><div className="dimension-inputs"><div><input id="max-width" aria-label="最大宽度" type="number" min="1" max="16384" step="1" placeholder="原始宽度" value={options.maxWidth ?? ''} onChange={(event) => setOptions({ ...options, maxWidth: event.target.value ? Number(event.target.value) : undefined })} /><span>W</span></div><X size={12} /><div><input aria-label="最大高度" type="number" min="1" max="16384" step="1" placeholder="原始高度" value={options.maxHeight ?? ''} onChange={(event) => setOptions({ ...options, maxHeight: event.target.value ? Number(event.target.value) : undefined })} /><span>H</span></div></div><p className="field-help">留空保持原尺寸，只缩小、不放大</p></div>
 
-            <div className="setting-section extra-settings"><label className="checkbox-row"><input type="checkbox" checked={options.stripMetadata} onChange={(event) => setOptions({ ...options, stripMetadata: event.target.checked })} /><span><strong>移除元数据</strong><small>也会移除 ICC 色彩配置</small></span><ShieldCheck size={16} /></label>{(options.format === 'JPEG' || options.format === 'BMP') && <label className="background-setting">透明区域填充颜色<input type="color" value={options.background} onChange={(event) => setOptions({ ...options, background: event.target.value })} /></label>}</div>
+            <div className="setting-section extra-settings">{options.format !== 'HEIC' && options.format !== 'SVG' && <label className="checkbox-row"><input type="checkbox" checked={options.stripMetadata} onChange={(event) => setOptions({ ...options, stripMetadata: event.target.checked })} /><span><strong>移除元数据</strong><small>也会移除 ICC 色彩配置</small></span><ShieldCheck size={16} /></label>}{(options.format === 'JPEG' || options.format === 'BMP' || options.format === 'HEIC' || options.format === 'SVG') && <label className="background-setting">透明区域填充颜色<input type="color" value={options.background} onChange={(event) => setOptions({ ...options, background: event.target.value })} /></label>}{options.format === 'SVG' && <p className="field-help">透明与半透明区域先合成到此背景色。</p>}</div>
           </fieldset>
-          <div className="convert-actions"><button className="primary convert-button" disabled={!ready || !items.length || busy || zipping || locked} onClick={() => void run(resumable ? 'resume' : 'all')}>{busy ? <><LoaderCircle size={17} className="spin" />正在转换 {processed} / {processingTotal}</> : <><Zap size={17} />{resumable ? '继续未完成任务' : done.length ? '重新转换' : '转换全部图片'}<span>{items.length ? `${items.length} 张` : <ArrowRight size={17} />}</span></>}</button>{busy && <div className="toolbar task-run-controls"><button disabled={stopping} onClick={() => stop('pause')}><Pause size={14} />暂停</button><button disabled={control.current.mode === 'cancel'} onClick={() => stop('cancel')}><Square size={14} />取消剩余任务</button></div>}<p>{busy ? stopping ? '正在停止领取新任务；暂停会等待已开始的图片完成' : '最多同时处理 ' + parallelism + ' 张；大图单独处理' : resumable ? '继续时使用原任务设置，保留已完成结果' : ready ? '转换在你的设备上完成' : engineError ? '引擎加载失败' : '正在准备本地转换引擎…'}</p>{engineError && <div className="engine-error" role="alert">{engineError}<button onClick={() => setEngineVersion((version) => version + 1)}><RefreshCw size={12} />重新加载引擎</button></div>}</div>
+          <div className="convert-actions"><button className="primary convert-button" disabled={!ready || !items.length || busy || zipping || locked} onClick={() => void run(resumable ? 'resume' : 'all')}>{busy ? <><LoaderCircle size={17} className="spin" />正在转换 {processed} / {processingTotal}</> : <><Zap size={17} />{resumable ? '继续未完成任务' : done.length ? '重新转换' : '转换全部图片'}<span>{items.length ? `${items.length} 张` : <ArrowRight size={17} />}</span></>}</button>{busy && <div className="toolbar task-run-controls"><button disabled={stopping} onClick={() => stop('pause')}><Pause size={14} />暂停</button><button disabled={control.current.mode === 'cancel'} onClick={() => stop('cancel')}><Square size={14} />取消剩余任务</button></div>}<p>{busy ? stopping ? '正在停止领取新任务；暂停会等待已开始的图片完成' : '最多同时处理 ' + parallelism + ' 张；大图单独处理' : resumable ? '继续时使用原任务设置，保留已完成结果' : ready ? `目标格式：${target.label}` : engineError ? '引擎加载失败' : '正在准备转换引擎…'}</p>{engineError && <div className="engine-error" role="alert">{engineError}<button onClick={() => setEngineVersion((version) => version + 1)}><RefreshCw size={12} />重新加载引擎</button></div>}</div>
         </aside>
       </section>
 
       {message && <div className="notice" role="alert"><CircleHelp size={16} /><span>{message}</span><button aria-label="关闭提示" onClick={() => setMessage('')}><X size={15} /></button></div>}
-      {!!done.length && <section className="download-bar"><span className="complete-icon"><CheckCheck size={21} /></span><div><strong>{done.length} 张图片已转换</strong><p>{size(originalTotal)} <ArrowRight size={12} /> {size(outputTotal)} <span>{outputTotal < originalTotal ? `节省 ${Math.round((1 - outputTotal / originalTotal) * 100)}%` : '此设置下输出体积更大'}</span></p></div><button className="primary" disabled={busy || zipping || locked} onClick={downloadAll}>{zipping ? <LoaderCircle className="spin" size={16} /> : <ArrowDownToLine size={16} />}下载 ZIP</button></section>}
+      {!!done.length && <section className="download-bar"><span className="complete-icon"><CheckCheck size={21} /></span><div><strong>{done.length} 张图片已转换</strong><p>{size(originalTotal)} <ArrowRight size={12} /> {size(outputTotal)} <span>{outputTotal < originalTotal ? `节省 ${((1 - outputTotal / originalTotal) * 100).toFixed(1)}%` : '此设置下输出体积更大'}</span></p></div><button className="primary" disabled={busy || zipping || locked} onClick={downloadAll}>{zipping ? <LoaderCircle className="spin" size={16} /> : <ArrowDownToLine size={16} />}下载 ZIP</button></section>}
 
-      <div className="tool-note"><ShieldCheck size={16} /><p>仅处理静态图片。HEIC / HEIF 仅支持导入；PSD 只保留合成图。</p><button onClick={() => setModal('formats')}>查看格式支持<ArrowUpRight size={13} /></button></div>
-      <footer><span>FolioForge 页匠 · 本地图片工具</span><span className={`engine-status ${ready ? 'online' : ''}`}><span />{ready ? `引擎就绪 · ${writable.length} 种导出格式` : engineError ? '引擎需要重新加载' : '本地引擎准备中'}</span></footer>
+      <div className="tool-note"><ShieldCheck size={16} /><p>仅处理静态图片。HEIC 支持导入与导出，HEIF 可导入；PSD 只保留合成图。</p><button onClick={() => setModal('formats')}>查看格式支持<ArrowUpRight size={13} /></button></div>
+      <footer><span>FolioForge · 页匠</span><span className={`engine-status ${ready ? 'online' : ''}`}><span />{ready ? `引擎就绪 · ${writable.length} 种导出格式` : engineError ? '引擎需要重新加载' : '引擎准备中'}</span></footer>
     </main>
 
-    {modal && <section id="reference" className="reference-panel" aria-label={modal === 'formats' ? '格式支持' : '使用指南'}><div className="dialog-content"><div className="dialog-heading"><h2>{modal === 'formats' ? '格式支持' : '使用指南'}</h2><button className="icon-button" aria-label="收起说明" onClick={() => setModal(null)}><X size={20} /></button></div>{modal === 'formats' ? <><p className="dialog-description">导入与导出能力分别检测。SVG 由浏览器栅格化，其余格式由本地 WASM 引擎处理。仅转换静态图像；PSD 只读取合成图。</p><div className="format-table"><div className="format-table-heading"><span>格式 / 用途</span><span>导入</span><span>导出</span></div>{formats.map((format) => { const ability = capabilities.find((item) => item.id === format.id); return <div key={format.id}><span><strong>{format.label}</strong><small>{format.description}</small></span><span className={ability?.read ? 'supported' : ''}>{ready ? ability?.read ? '支持' : '不支持' : '检测中'}</span><span className={ability?.write ? 'supported' : ''}>{ready ? ability?.write ? '支持' : '不支持' : '检测中'}</span></div>; })}</div><p className="field-help">不支持 PDF、相机 RAW 及位图转矢量。EXR 等高动态范围格式的色深与色彩保真不在本版支持范围内。</p></> : <div className="guide"><article><span>01</span><div><h3>导入本地图片</h3><p>选择文件、拖入文件或直接粘贴剪贴板图片。单张图片不超过 40 MB、4800 万像素。</p></div></article><article><span>02</span><div><h3>设置格式与参数</h3><p>选择目标格式与编码质量；宽高用于限制最大边界，始终等比缩小。ICO 最长边为 256px；JPG 与 BMP 的透明区域会填充所选背景色。</p></div></article><article><span>03</span><div><h3>对比预览并下载</h3><p>转换完成后可拖动分割线对比前后效果，支持单张下载或打包为 ZIP。修改参数后点击「重新转换」即可更新结果。</p></div></article><div className="guide-note"><LockKeyhole size={19} /><p>开启「保存任务到此设备」后，图片与转换结果会保存在本机，重开页面可继续；未开启时刷新或关闭页面会清空列表，清除浏览器网站数据也会删除已保存的任务。网页版首次访问需下载转换引擎，桌面版已内置全部组件。</p></div></div>}</div></section>}
-    {dragging && !busy && <div className="drag-overlay"><Upload size={42} /><strong>松开，添加到工作台</strong><span>图片会留在你的设备里</span></div>}
+    {modal && <section id="reference" className="reference-panel" aria-label={modal === 'formats' ? '格式支持' : '使用指南'}><div className="dialog-content"><div className="dialog-heading"><h2>{modal === 'formats' ? '格式支持' : '使用指南'}</h2><button className="icon-button" aria-label="收起说明" onClick={() => setModal(null)}><X size={20} /></button></div>{modal === 'formats' ? <><p className="dialog-description">导入与导出能力分别检测。SVG 导入由浏览器栅格化，导出由本地 WASM 描摹为路径。仅转换静态图像；PSD 只读取合成图。</p><div className="format-table"><div className="format-table-heading"><span>格式 / 用途</span><span>导入</span><span>导出</span></div>{formats.map((format) => { const ability = capabilities.find((item) => item.id === format.id); return <div key={format.id}><span><strong>{format.label}</strong><small>{format.description}</small></span><span className={ability?.read ? 'supported' : ''}>{ready ? ability?.read ? '支持' : '不支持' : '检测中'}</span><span className={ability?.write ? 'supported' : ''}>{ready ? ability?.write ? '支持' : '不支持' : '检测中'}</span></div>; })}</div><p className="field-help">图片工作台不支持 PDF 和相机 RAW。SVG 描摹最多 400 万像素，透明区域合成到所选背景色，不保留原 SVG 的文字与图层结构。EXR 等高动态范围格式的色深与色彩保真不在本版支持范围内。</p></> : <div className="guide"><article><span>01</span><div><h3>导入图片</h3><p>选择文件、拖入文件或直接粘贴剪贴板图片。单张图片不超过 40 MB、4800 万像素。</p></div></article><article><span>02</span><div><h3>设置格式与参数</h3><p>选择目标格式与编码质量；宽高用于限制最大边界，始终等比缩小。ICO 最长边为 256px；JPG、BMP 与 HEIC 的透明区域会填充所选背景色。</p></div></article><article><span>03</span><div><h3>对比预览并下载</h3><p>导入或修改参数后自动生成当前图片的转换预览，可拖动分割线对比画质，查看实际文件体积并直接下载。批量转换后可打包为 ZIP。</p></div></article><div className="guide-note"><LockKeyhole size={19} /><p>{temporaryReason ? "此窗口为临时工作区，图片与结果不会自动保存。请在刷新或关闭窗口前下载所需结果；清空仅移除此窗口的图片。" : "图片与转换结果会自动保存在此设备，刷新或重开页面可继续。清空任务会删除本地副本，清除网站数据也会删除任务。"}</p></div></div>}</div></section>}
+    {dragging && !busy && <div className="drag-overlay"><Upload size={42} /><strong>松开即可添加图片</strong><span>支持同时拖入多张图片</span></div>}
   </div>;
 }

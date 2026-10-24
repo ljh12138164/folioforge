@@ -11,9 +11,9 @@ export type Task = {
   options?: ConvertOptions; output?: TaskOutput; error?: string;
 };
 
-export async function openTaskStore() {
+export async function openTaskStore(workspace: string) {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
-    const request = indexedDB.open('pixelforge-tasks', 1);
+    const request = indexedDB.open(workspace === 'legacy' ? 'pixelforge-tasks' : `pixelforge-tasks:${workspace}`, 1);
     request.onupgradeneeded = () => {
       request.result.createObjectStore('tasks', { keyPath: 'id' });
       request.result.createObjectStore('settings');
@@ -38,10 +38,9 @@ export async function openTaskStore() {
     async load() {
       const transaction = db.transaction(['tasks', 'settings'], 'readonly');
       const tasks = transaction.objectStore('tasks').getAll();
-      const enabled = transaction.objectStore('settings').get('enabled');
       const options = transaction.objectStore('settings').get('options');
-      return new Promise<{ tasks: Task[]; enabled: boolean; options?: ConvertOptions }>((resolve, reject) => {
-        transaction.oncomplete = () => resolve({ tasks: tasks.result, enabled: enabled.result === true, options: options.result });
+      return new Promise<{ tasks: Task[]; options?: ConvertOptions }>((resolve, reject) => {
+        transaction.oncomplete = () => resolve({ tasks: tasks.result, options: options.result });
         transaction.onabort = () => reject(transaction.error);
       });
     },
@@ -52,14 +51,6 @@ export async function openTaskStore() {
       });
     },
     remove(id?: string) { return write((tasks) => { if (id) tasks.delete(id); else tasks.clear(); }); },
-    setEnabled(enabled: boolean, tasks: Task[], options: ConvertOptions) {
-      return write((store, settings) => {
-        store.clear();
-        if (enabled) tasks.forEach((task) => store.put(task));
-        settings.put(enabled, 'enabled');
-        settings.put(options, 'options');
-      });
-    },
     close() { db.close(); },
   };
 }
