@@ -1,29 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #161917;
-  --color-muted: #5c645e;
-  --color-accent: #1d5c42;
-  --color-primary: #1d5c42;
-  --color-primary-hover: #154732;
-  --color-accent-soft: #eaf3ee;
-  --color-accent-line: #78a892;
-  --color-line: #dfe4e0;
-  --color-control-line: #b8c2ba;
-  --color-canvas: #f4f6f4;
-  --color-surface: #f9fbf9;
+  --color-ink: #14171f;
+  --color-muted: #5a6275;
+  --color-accent: #254edb;
+  --color-primary: #254edb;
+  --color-primary-hover: #1b3cb0;
+  --color-accent-soft: #edf2ff;
+  --color-accent-line: #8da6f7;
+  --color-line: #e1e5ef;
+  --color-control-line: #bcc4d6;
+  --color-canvas: #f5f6fa;
+  --color-surface: #fafbfe;
   --color-panel: #ffffff;
-  --color-success: #1d6b47;
-  --color-success-soft: #ebf6f0;
-  --color-success-line: #bce0cd;
-  --color-warning: #8a5a14;
+  --color-success: #157347;
+  --color-success-soft: #eaf6f0;
+  --color-success-line: #b7e1cd;
+  --color-warning: #945d14;
   --color-warning-soft: #fef8ec;
   --color-warning-line: #ebd4a7;
-  --color-error: #b43c32;
-  --color-checker: #f5f7f5;
-  --color-checker-alt: #e6ebe7;
-  --color-overlay: #f4f6f4e6;
-  --color-scrollbar: #9aa69d;
+  --color-error: #c23838;
+  --color-checker: #f3f5fa;
+  --color-checker-alt: #e6eaf2;
+  --color-overlay: #f5f6fae6;
+  --color-scrollbar: #99a3b8;
   --color-on-primary: #ffffff;
   --font-sans: "Inter", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -32,29 +32,29 @@
 :root { color-scheme: light; }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-ink: #ecefec;
-  --color-muted: #9aa49d;
-  --color-accent: #6fd1a5;
-  --color-primary: #256f51;
-  --color-primary-hover: #2f8361;
-  --color-accent-soft: #192e25;
-  --color-accent-line: #417a62;
-  --color-line: #2a302c;
-  --color-control-line: #49544e;
-  --color-canvas: #111412;
-  --color-surface: #161a18;
-  --color-panel: #1b201d;
-  --color-success: #6fd1a5;
-  --color-success-soft: #142920;
-  --color-success-line: #2b5743;
+  --color-ink: #edf0f7;
+  --color-muted: #949eb5;
+  --color-accent: #7da2ff;
+  --color-primary: #365ee6;
+  --color-primary-hover: #4b70f0;
+  --color-accent-soft: #192340;
+  --color-accent-line: #3d589e;
+  --color-line: #252b3b;
+  --color-control-line: #434d66;
+  --color-canvas: #0f1219;
+  --color-surface: #141822;
+  --color-panel: #191e2b;
+  --color-success: #5dd39e;
+  --color-success-soft: #132a22;
+  --color-success-line: #265944;
   --color-warning: #efc46e;
   --color-warning-soft: #2b2214;
   --color-warning-line: #664d25;
   --color-error: #ff8e85;
-  --color-checker: #181c1a;
-  --color-checker-alt: #222825;
-  --color-overlay: #111412e6;
-  --color-scrollbar: #49544e;
+  --color-checker: #151924;
+  --color-checker-alt: #1f2534;
+  --color-overlay: #0f1219e6;
+  --color-scrollbar: #434d66;
 }
 
 @layer base {
@@ -77,15 +77,23 @@
 
 @layer components {
   .app-shell { @apply min-h-dvh flex flex-col; }
+  .task-controls { @apply mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-xs text-muted; }
+  .task-controls .checkbox-row { @apply m-0; }
+  .task-controls button { @apply rounded-lg border border-line px-3 py-2 text-ink; }
+  .task-run-controls { @apply mt-3 flex-wrap justify-center; }
   .header {
     @apply sticky top-0 z-20 mx-auto flex h-16 w-full max-w-[1328px] items-center gap-8 border-b border-line/80 bg-canvas/85 px-8 backdrop-blur-md;
   }
-  .brand { @apply flex items-center text-[21px] font-bold tracking-[-0.03em] text-ink no-underline; }
+  .brand { @apply flex items-center text-[20px] font-bold tracking-[-0.03em] text-ink no-underline; }
   .brand-symbol {
-    @apply mr-2.5 grid size-8 place-items-center rounded-lg bg-primary text-white;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 6px -1px rgba(29, 92, 66, 0.35);
+    @apply mr-2.5 grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-primary text-white;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 6px -1px rgba(37, 78, 219, 0.36);
   }
+  .brand-symbol svg { @apply size-full; }
   .brand-light { @apply font-normal text-muted; }
+  .brand-tag {
+    @apply ml-2 rounded-md border border-accent-line/40 bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold tracking-normal text-accent;
+  }
   .header nav { @apply ml-auto flex items-center gap-7 text-[13px] font-medium text-muted; }
   .header nav button:hover, .header nav a:hover { @apply text-ink; }
   .live-dot, .engine-status>span { @apply inline-block size-2 shrink-0 rounded-full bg-success; }
@@ -99,7 +107,7 @@
 
   .workspace {
     @apply grid grid-cols-[minmax(0,1fr)_348px] overflow-hidden rounded-2xl border border-line bg-panel;
-    box-shadow: 0 1px 2px rgba(16, 24, 20, 0.03), 0 12px 32px -8px rgba(16, 24, 20, 0.06);
+    box-shadow: 0 1px 2px rgba(20, 23, 31, 0.03), 0 12px 32px -8px rgba(20, 23, 31, 0.06);
   }
   .workspace-main { @apply flex min-w-0 flex-col bg-panel; }
   .panel-heading { @apply flex h-14 items-center justify-between gap-3 border-b border-line px-6; }
@@ -116,13 +124,13 @@
   .dropzone.dragging { @apply border-accent bg-accent-soft/70; }
   .import-icon {
     @apply mb-6 flex size-16 items-center justify-center rounded-2xl border border-accent-line/30 bg-accent-soft text-accent;
-    box-shadow: 0 4px 16px -4px rgba(29, 92, 66, 0.15);
+    box-shadow: 0 4px 16px -4px rgba(37, 78, 219, 0.16);
   }
   .dropzone h3 { @apply text-lg font-semibold tracking-tight text-ink; }
   .dropzone>p { @apply mt-2 text-sm text-muted; }
   .primary {
     @apply rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary hover:bg-primary-hover;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(16, 24, 20, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(20, 23, 31, 0.12);
   }
   .import-button { @apply mt-6 gap-2.5 px-5 py-2.5; }
   .import-button>svg:last-child { @apply ml-1 opacity-80; }
@@ -417,8 +425,9 @@
   .home-format-list a { @apply text-[10px]; }
   .home-guide { @apply grid-cols-1 gap-3 p-4; }
   .header { @apply h-[68px] gap-3 px-4; }
-  .brand { @apply text-[20px]; }
+  .brand { @apply text-[18px]; }
   .brand-symbol { @apply size-7; }
+  .brand-tag { @apply ml-1.5 px-1 text-[10px]; }
   .header nav { @apply gap-3 text-xs; }
   .header nav svg { @apply hidden; }
   .header nav button { @apply min-h-10; }

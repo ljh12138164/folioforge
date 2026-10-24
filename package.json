@@ -7,6 +7,9 @@
     "build": "turbo run build",
     "check": "turbo run check",
     "test": "turbo run test",
+    "web:test": "turbo run test --filter=@pixelforge/web",
+    "test:unit": "pnpm --filter @pixelforge/web test:unit",
+    "web:bench": "pnpm --filter @pixelforge/web build && pnpm --filter @pixelforge/web test:bench",
     "desktop:start": "pnpm --filter @pixelforge/web build && pnpm --filter @pixelforge/desktop start",
     "desktop:package": "pnpm --filter @pixelforge/web build && pnpm --filter @pixelforge/desktop package",
     "desktop:test": "turbo run test --filter=@pixelforge/desktop"

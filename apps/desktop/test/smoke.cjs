@@ -4,7 +4,8 @@ const { app, session } = require('electron');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const { join, resolve } = require('node:path');
-const output = resolve(__dirname, '../work/smoke');
+const output = process.env.PIXELFORGE_TEST_OUTPUT || resolve(__dirname, '../work/smoke');
+require('node:fs').mkdirSync(join(output, 'profile'), { recursive: true });
 app.setPath('userData', join(output, 'profile'));
 const timer = setTimeout(() => { console.error('Desktop smoke test timed out'); app.exit(1); }, 90000);
 
@@ -36,10 +37,21 @@ app.once('browser-window-created', (_event, window) => {
   window.webContents.once('did-finish-load', async () => {
     try {
       await fs.mkdir(output, { recursive: true });
+      if (process.argv.includes('--smoke-test')) assert.equal(app.isPackaged, true);
       assert.equal(await js('typeof window.require'), 'undefined');
       assert.equal(await js('typeof window.process'), 'undefined');
       assert.equal(await js('isSecureContext'), true);
+      await waitFor("document.querySelector('h1')?.textContent === '文件处理，就在本机。'");
+      assert.equal(await js("document.querySelectorAll('.tools-entry').length"), 21);
+      await capture('desktop-tools.png');
+      await window.loadURL('pixelforge://app/pdf/');
+      await waitFor("document.querySelector('h1')?.textContent === '把每一页，安排妥当。'");
+      await js("[...document.querySelectorAll('button')].find(b => b.textContent.includes('载入示例文档')).click()");
+      await waitFor("[...document.querySelectorAll('.pdf-page-image img')].length === 3 && [...document.querySelectorAll('.pdf-page-image img')].every(i => i.complete && i.naturalWidth > 0)");
+      await capture('desktop-pdf.png');
+      await window.loadURL('pixelforge://app/images/');
       await waitFor("document.querySelector('h1')?.textContent === '在本地转换图片格式'");
+      await js("new Promise((resolve, reject) => { const request = indexedDB.deleteDatabase('pixelforge-tasks'); request.onsuccess = resolve; request.onerror = () => reject(request.error); })");
       await js("[...document.querySelectorAll('button')].find(b => b.textContent === '试用示例').click()");
       await waitFor("[...document.querySelectorAll('img')].some(i => i.alt === '示例图片的实际转换结果' && i.naturalWidth > 0)");
       await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent === '重新转换示例' && !b.disabled)");

@@ -6,3 +6,4 @@ out/
 .turbo/
 work/
 *.local
+apps/web/public/pdf-assets/

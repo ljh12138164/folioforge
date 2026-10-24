@@ -44,11 +44,11 @@ export function Home() {
   }
 
   return <div className="home-page">
-    <SiteHeader active="home" />
+    <SiteHeader active="images" />
     <main className="home-main">
       <section className="home-intro">
         <h1>在本地转换图片格式</h1>
-        <p>支持 14 种格式导出，可批量调整画质和尺寸。图片无需上传。</p>
+        <p>支持 14 种格式导出，可批量调整编码质量与最大尺寸，图片在浏览器内直接处理。</p>
         <div className="home-actions"><button className="primary" type="submit" form="home-settings" disabled={busy}><Images size={18} />开始转换<ArrowRight size={16} /></button><button className="secondary" disabled={busy} onClick={previewSample}>{busy ? <LoaderCircle size={17} className="spin" /> : <Play size={17} />}{busy ? '正在转换示例' : result ? '重新转换示例' : '试用示例'}</button></div>
       </section>
 
@@ -69,15 +69,15 @@ export function Home() {
         </form>
       </section>
       {error && <p role="alert" className="home-error">{error}</p>}
-      <p className="home-demo-note">示例图片由 AI 生成，仅用于体验转换功能。更改设置后，点击示例按钮更新结果。</p>
+      <p className="home-demo-note">示例图片仅供体验转换效果。修改格式、画质或尺寸后，点击「重新转换示例」即可查看变化。</p>
 
       <section className="home-formats" id="formats">
         <h2>还支持这些格式</h2>
         <div className="home-format-list">{outputFormats.slice(4).map((item) => { const Icon = formatIcons[item.id] ?? FileImage; return <a key={item.id} href={`/convert/?format=${item.id}`}><Icon size={21} strokeWidth={1.5} /><span>{item.label}</span></a>; })}</div>
         <p><Info size={15} />HEIC / HEIF、SVG 仅支持导入。仅处理静态图片；PSD 只保留合成图。</p>
       </section>
-      <section className="home-guide" id="guide"><h2>选好格式，再下载</h2><div><p>进入工作台后添加图片，统一选择格式、画质和尺寸。转换完成后可以逐张下载，也可以打包为 ZIP。</p><p>每张图片不超过 40 MB、4800 万像素。列表保存在内存中，关闭前请下载结果。</p><a href="/convert/">进入转换工作台<ArrowRight size={16} /></a></div></section>
-      <footer><span>PixelForge · 本地图片工具</span><span>图片无需上传</span></footer>
+      <section className="home-guide" id="guide"><h2>批量处理说明</h2><div><p>在转换工作台中可一次添加多张图片，统一设置目标格式、编码质量和最大宽高。转换完成后可单张下载，也可打包为 ZIP。</p><p>单张图片上限为 40 MB、4800 万像素。开启本机任务保存后，重开页面仍可继续；未开启时关闭页面会清空列表。</p><a href="/convert/">进入转换工作台<ArrowRight size={16} /></a></div></section>
+      <footer><span>FolioForge 页匠 · 本地图片工具</span><span>图片无需上传</span></footer>
     </main>
   </div>;
 }

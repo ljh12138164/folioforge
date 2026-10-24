@@ -50,10 +50,12 @@ export function createEngine(worker: Worker) {
   worker.onerror = () => fail(new Error('转换引擎意外停止，请重新加载引擎。'));
   return {
     ready,
+    get failed() { return !!fatalError; },
     async convert(file: File, options: ConvertOptions) {
       await ready;
       if (fatalError) throw fatalError;
       const bytes = await readFile(file);
+      if (fatalError) throw fatalError;
       const extension = file.name.split('.').pop()?.toLowerCase();
       const sourceFormat = extension === 'svg' ? 'PNG' : extension === 'heif' ? 'HEIC' : extension === 'tif' ? 'TIFF' : extension === 'jpeg' ? 'JPEG' : formats.find((format) => format.extension === extension)?.id;
       const id = ++nextId;
