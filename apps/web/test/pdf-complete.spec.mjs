@@ -102,6 +102,8 @@ test('image signatures land at real visible coordinates for all rotations and Us
 
 test('handwriting, pointer positioning, clear and invalid upload are usable', async ({ page }) => {
   await page.goto('/pdf/?tool=stamp'); await add(page, [file('scan.pdf', await scans())]);
+  // The async positioning preview changes the settings column's scroll geometry.
+  await expect.poll(() => page.getByAltText('当前页面定位预览', { exact: true }).evaluateAll(imgs => imgs.length === 1 && imgs[0].complete && imgs[0].naturalWidth > 0)).toBe(true);
   const pad = page.getByLabel('手写签名区域', { exact: true }); await pad.scrollIntoViewIfNeeded();
   const box = await pad.boundingBox();
   await page.mouse.move(box.x + 20, box.y + 20); await page.mouse.down();

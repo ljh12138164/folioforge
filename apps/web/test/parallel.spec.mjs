@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-async function prepare(page, memory = 8, failure = '') {
-  await page.addInitScript(({ memory, failure }) => {
+async function prepare(page, memory = 8, failure = '', overlap = false) {
+  await page.addInitScript(({ memory, failure, overlap }) => {
     Object.defineProperty(navigator, 'hardwareConcurrency', { value: 8 });
     Object.defineProperty(navigator, 'deviceMemory', { value: memory });
     window.__work = { active: 0, peak: 0, starts: [], errors: 0, live: 0, perWidth: {} };
     const NativeWorker = Worker;
+    const initialPair = [];
     window.Worker = class extends NativeWorker {
       pending = new Set();
       ended = false;
@@ -31,6 +32,12 @@ async function prepare(page, memory = 8, failure = '') {
             queueMicrotask(() => this.dispatchEvent(failure === 'crash' ? new ErrorEvent('error') : new MessageEvent('message', { data: { type: 'error', id: data.id, error: '浏览器内存不足，请减小图片尺寸或分批处理。' } })));
             return;
           }
+          // Start both real conversions together after their WASM workers are ready.
+          if (overlap && [1600, 1601].includes(width)) {
+            initialPair.push(() => super.postMessage(data, ...rest));
+            if (initialPair.length === 2) initialPair.splice(0).forEach(send => send());
+            return;
+          }
         }
         return super.postMessage(data, ...rest);
       }
@@ -44,7 +51,7 @@ async function prepare(page, memory = 8, failure = '') {
         super.terminate();
       }
     };
-  }, { memory, failure });
+  }, { memory, failure, overlap });
   await page.goto('/convert/?format=JPEG');
   await expect(page.locator('footer')).toContainText('引擎就绪');
   await expect(page.getByRole('checkbox', { name: '保存任务到此设备' })).toBeEnabled();
@@ -70,7 +77,7 @@ async function add(page, sizes) {
 }
 
 test('real conversions overlap, large images run alone, and idle engines are released', async ({ page }, testInfo) => {
-  await prepare(page);
+  await prepare(page, 8, '', true);
   await add(page, [[1600, 1200], [1601, 1200], [1602, 1200], [1603, 1200], [4000, 2400], [1604, 1200], [1605, 1200]]);
   await page.locator('.convert-button').click();
   await expect(page.locator('.status-done')).toHaveCount(7, { timeout: process.env.CI ? 120_000 : 60_000 });
