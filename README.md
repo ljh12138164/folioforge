@@ -55,9 +55,11 @@ Windows x64 便携版输出在：
 apps/desktop/dist/PixelForge-win32-x64/PixelForge.exe
 ```
 
-保留整个 `PixelForge-win32-x64` 文件夹，双击其中的 EXE 启动。当前已验证 Windows x64；尚未制作安装向导、应用签名或自动更新。
+保留整个 `PixelForge-win32-x64` 文件夹，双击其中的 EXE 启动。Windows x64、macOS arm64 / Intel x64、Ubuntu 24.04 x64 已通过对应平台验证；尚未制作安装向导、应用签名或自动更新。
 
 `.github/workflows/desktop.yml` 提供 Windows x64、macOS arm64 / x64、Ubuntu 24.04 x64 的构建、Web / 引擎 / Electron 测试和打包产物启动验证入口。跨平台结果以对应 GitHub Actions 运行记录为准。
+
+推送 `desktop-v0.1.0` 这样的版本标签时，工作流校验标签与桌面 `package.json` 的版本一致，四个平台全部通过后创建 GitHub Release 草稿，附便携包、更新说明和 SHA-256 校验文件。发布步骤见 [Electron 版本与发布](docs/DESKTOP-RELEASE.md)。
 
 首次安装需要下载 Electron。如果 GitHub 下载失败，可按 Electron 支持的镜像配置重试：
 
