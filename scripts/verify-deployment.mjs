@@ -7,7 +7,13 @@ assert.ok(['pdf', 'image'].includes(product), 'Product must be pdf or image');
 const origin = product === 'pdf' ? 'https://pdf.ljhboard.cn' : 'https://img.ljhboard.cn';
 const paths = product === 'pdf' ? ['/', '/pdf/', '/guide/'] : ['/', '/convert/', '/images/', '/guide/'];
 async function get(path, method = 'GET') {
-  return fetch(new URL(path, base), { method, redirect: 'manual', signal: AbortSignal.timeout(15000), headers: { 'Cache-Control': 'no-cache' } });
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(new URL(path, base), { method, redirect: 'manual', signal: AbortSignal.timeout(15000), headers: { 'Cache-Control': 'no-cache' } });
+    } catch (error) {
+      if (attempt === 2) throw new Error(`Connection failed: ${path}`, { cause: error });
+    }
+  }
 }
 for (const path of paths) {
   const response = await get(path);
