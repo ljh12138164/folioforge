@@ -1,20 +1,20 @@
-# Install only after provisioning this domain's TLS certificate.
-# If using the existing Cloudflare for SaaS origin, use its validated origin
-# certificate and hostname configuration instead of copying an unrelated cert.
+# PDF origin: install only when the new release is ready.
+# The current ECS Origin CA certificate covers *.ljhboard.cn (verified 2026-10-27).
+# Keep Cloudflare proxy enabled when using this Origin CA certificate.
 server {
     listen 80;
     listen [::]:80;
-    server_name folioforge.ljhboard.cn;
-    return 301 https://folioforge.ljhboard.cn$request_uri;
+    server_name pdf.ljhboard.cn;
+    return 301 https://pdf.ljhboard.cn$request_uri;
 }
 
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name folioforge.ljhboard.cn;
-    ssl_certificate /etc/letsencrypt/live/folioforge.ljhboard.cn/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/folioforge.ljhboard.cn/privkey.pem;
+    server_name pdf.ljhboard.cn;
+    ssl_certificate /www/server/panel/vhost/cert/ai.ljhboard.cn/fullchain.pem;
+    ssl_certificate_key /www/server/panel/vhost/cert/ai.ljhboard.cn/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
 
     location / {

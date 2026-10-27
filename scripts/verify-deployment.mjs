@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 
 const base = new URL(process.argv[2] || 'http://127.0.0.1:18085');
 const revision = process.argv[3];
-const origin = 'https://folioforge.ljhboard.cn';
-const paths = ['/', '/pdf/', '/convert/', '/images/', '/guide/'];
+const product = process.argv[4] || 'pdf';
+assert.ok(['pdf', 'image'].includes(product), 'Product must be pdf or image');
+const origin = product === 'pdf' ? 'https://pdf.ljhboard.cn' : 'https://img.ljhboard.cn';
+const paths = product === 'pdf' ? ['/', '/pdf/', '/guide/'] : ['/', '/convert/', '/images/', '/guide/'];
 async function get(path, method = 'GET') {
   return fetch(new URL(path, base), { method, redirect: 'manual', signal: AbortSignal.timeout(15000), headers: { 'Cache-Control': 'no-cache' } });
 }
@@ -17,11 +19,13 @@ for (const path of paths) {
   assert.ok(html.includes(`rel="canonical" href="${origin}${path}"`), `Canonical: ${path}`);
   assert.ok(html.includes('application/ld+json'), `Schema: ${path}`);
 }
+let assets = [];
+if (product === 'pdf') {
 const worker = await get('/pdf-sw.js');
 assert.match(worker.headers.get('cache-control') || '', /no-store/);
 assert.match(worker.headers.get('content-type') || '', /javascript/);
 const source = await worker.text();
-const assets = JSON.parse(source.match(/const ASSETS = (\[[^\n]*\]);/)[1]);
+assets = JSON.parse(source.match(/const ASSETS = (\[[^\n]*\]);/)[1]);
 for (let offset = 0; offset < assets.length; offset += 12) {
   await Promise.all(assets.slice(offset, offset + 12).map(async path => {
     const response = await get(path, 'HEAD');
@@ -31,15 +35,19 @@ for (let offset = 0; offset < assets.length; offset += 12) {
     if (path.startsWith('/_next/static/')) assert.match(response.headers.get('cache-control') || '', /immutable/, path);
   }));
 }
+} else {
+  for (const path of ['/image-assets/HEIC-LICENSE.txt', '/image-assets/VECTORIZER-LICENSE.txt', '/sample-landscape.png']) assert.equal((await get(path)).status, 200, path);
+}
+for (const path of product === 'pdf' ? ['/convert/', '/images/', '/image-assets/HEIC-LICENSE.txt'] : ['/pdf/', '/pdf-sw.js', '/pdf-assets/pdf.worker.min.mjs']) assert.equal((await get(path)).status, 404, 'Unexpected feature: ' + path);
 const sitemap = await get('/sitemap.xml');
-assert.match(sitemap.headers.get('content-type') || '', /xml/);
+assert.match(sitemap.headers.get('content-type') || '', /^application\/xml(?:;|$)/);
 assert.deepEqual([...(await sitemap.text()).matchAll(/<loc>(.*?)<\/loc>/g)].map(match => match[1]), paths.map(path => origin + path));
 assert.ok((await (await get('/robots.txt')).text()).includes(origin + '/sitemap.xml'));
 const llms = await get('/llms.txt');
 assert.match(llms.headers.get('content-type') || '', /text\/plain/);
 assert.ok((await llms.text()).includes(origin + '/guide/'));
 for (const path of ['/missing-release-page', '/_next/static/missing.js']) assert.equal((await get(path)).status, 404, path);
-for (const path of ['/pdf', '/convert', '/guide']) {
+for (const path of paths.filter(path => path !== '/').map(path => path.slice(0, -1))) {
   const response = await get(path + '?verify=1');
   assert.equal(response.status, 301, path);
   assert.equal(response.headers.get('location'), path + '/?verify=1');

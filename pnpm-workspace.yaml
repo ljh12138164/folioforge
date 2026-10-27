@@ -1,5 +1,8 @@
 packages:
   - apps/*
+  # Electron 暂停，先迁移和验证两个 Web 应用。
+  - '!apps/desktop'
+  - '!apps/pdf-desktop'
   - packages/*
 allowBuilds:
   electron: true
