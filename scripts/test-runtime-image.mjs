@@ -3,6 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 
 const image = process.argv[2];
 const revision = process.argv[3];
+const product = process.argv[4] || 'pdf';
 if (!image || !/^[0-9a-f]{40}$/.test(revision || '')) throw new Error('Usage: node scripts/test-runtime-image.mjs image revision');
 const container = `folioforge-verify-${process.pid}`;
 function docker(args) {
@@ -18,7 +19,7 @@ try {
     await setTimeout(500);
   }
   if (!ready) throw new Error('Runtime failed to start');
-  const result = spawnSync(process.execPath, ['scripts/verify-deployment.mjs', 'http://127.0.0.1:18086', revision], { stdio: 'inherit' });
+  const result = spawnSync(process.execPath, ['scripts/verify-deployment.mjs', 'http://127.0.0.1:18086', revision, product], { stdio: 'inherit' });
   if (result.status !== 0) throw new Error('Runtime HTTP checks failed');
 } catch (error) {
   spawnSync('docker', ['logs', container], { stdio: 'inherit' });

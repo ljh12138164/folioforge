@@ -1,0 +1,19 @@
+{
+  "name": "@pixelforge/pdf-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FolioForge 本地 PDF 工具",
+  "author": "FolioForge",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check scripts/package.mjs && node --check scripts/test-package.mjs",
+    "package": "node scripts/package.mjs",
+    "test": "node --test test/asset-path.test.cjs && electron test/smoke.cjs",
+    "test:package": "node scripts/test-package.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "@electron/packager": "20.3.0"
+  }
+}

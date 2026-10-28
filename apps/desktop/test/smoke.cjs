@@ -41,15 +41,6 @@ app.once('browser-window-created', (_event, window) => {
       assert.equal(await js('typeof window.require'), 'undefined');
       assert.equal(await js('typeof window.process'), 'undefined');
       assert.equal(await js('isSecureContext'), true);
-      await waitFor("document.querySelector('h1')?.textContent === 'PDF 与图片工具箱'");
-      assert.equal(await js("document.querySelectorAll('.tools-entry').length"), 21);
-      await capture('desktop-tools.png');
-      await window.loadURL('pixelforge://app/pdf/');
-      await waitFor("document.querySelector('h1')?.textContent === 'PDF 工作台'");
-      await js("[...document.querySelectorAll('button')].find(b => b.textContent.includes('载入示例文档')).click()");
-      await waitFor("[...document.querySelectorAll('.pdf-page-image img')].length === 3 && [...document.querySelectorAll('.pdf-page-image img')].every(i => i.complete && i.naturalWidth > 0)");
-      await capture('desktop-pdf.png');
-      await window.loadURL('pixelforge://app/images/');
       await waitFor("document.querySelector('h1')?.textContent === '图片格式转换'");
       await js("new Promise((resolve, reject) => { const request = indexedDB.deleteDatabase('pixelforge-tasks'); request.onsuccess = resolve; request.onerror = () => reject(request.error); })");
       await js("[...document.querySelectorAll('button')].find(b => b.textContent === '试用示例').click()");

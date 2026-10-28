@@ -6,8 +6,8 @@ out/
 .turbo/
 work/
 *.local
-apps/web/public/pdf-assets/
-apps/web/public/image-assets/
+apps/pdf-web/public/pdf-assets/
+apps/image-web/public/image-assets/
 target/
 packages/heic-wasm/pkg/
 packages/vectorizer-wasm/pkg/

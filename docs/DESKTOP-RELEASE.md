@@ -1,10 +1,12 @@
 # Electron 版本与发布
 
-Git 保存源码和版本标签，GitHub Actions 在对应标签上构建、测试、归档，GitHub Releases 保存各版本下载文件与更新说明。版本号以 `apps/desktop/package.json` 的 `version` 为准；Electron 打包时已将其写入应用元数据。
+> 当前暂停 Electron 开发与 CI。桌面目录已从工作区排除，根目录桌面命令已移除，工作流保留为 `.github/workflows/desktop.yml.disabled`。下文供恢复桌面工作时参考，不是当前启用的发布流程。
+
+Git 保存源码和版本标签，GitHub Actions 在对应标签上构建、测试、归档，GitHub Releases 保存各版本下载文件与更新说明。图片应用为 `apps/desktop`（PixelForge），PDF 应用为 `apps/pdf-desktop`（FolioForge）；两份 `package.json` 的 `version` 必须一致，Electron 打包时分别写入应用元数据。
 
 ## 发布一个版本
 
-1. 修改桌面 `version`，例如 `0.1.1`；修复递增补丁号，新功能递增次版本号，不兼容变更递增主版本号。测试版可使用 `0.2.0-beta.1`。
+1. 同步修改两份桌面 `version`，例如 `0.1.1`；修复递增补丁号，新功能递增次版本号，不兼容变更递增主版本号。测试版可使用 `0.2.0-beta.1`。
 2. 提交版本号及本次源码变更，将包含新版工作流的提交合入 `main`。
 3. 在该提交创建并推送对应标签：
 
@@ -28,7 +30,7 @@ Git 保存源码和版本标签，GitHub Actions 在对应标签上构建、测�
 | Linux x64 | `FolioForge-0.1.1-linux-x64.tar.gz` |
 | SHA-256 校验 | `SHA256SUMS.txt` |
 
-解压后保留整个 `PixelForge-*` 目录。Windows 启动 `PixelForge.exe`，macOS 打开目录内的 `.app`，Linux 启动 `PixelForge`。Linux 如果需要配置沙箱辅助程序，在解压目录执行：
+每个平台同时发布 `FolioForge-*`（PDF）和 `PixelForge-*`（图片）两种包，共八个归档文件。解压后保留整个产品目录；Windows 分别启动 `FolioForge.exe` 或 `PixelForge.exe`，macOS 打开对应 `.app`，Linux 启动同名程序。两者用户数据和协议独立。Linux 如果需要配置沙箱辅助程序，以图片产品为例在解压目录执行（PDF 产品将名称替换为 `FolioForge`）：
 
 ```bash
 sudo chown root:root PixelForge-linux-x64/chrome-sandbox

@@ -1,0 +1,16 @@
+[
+  {
+    "type": "A",
+    "name": "pdf.ljhboard.cn",
+    "content": "60.205.171.159",
+    "ttl": 1,
+    "proxied": true
+  },
+  {
+    "type": "A",
+    "name": "img.ljhboard.cn",
+    "content": "60.205.171.159",
+    "ttl": 1,
+    "proxied": true
+  }
+]

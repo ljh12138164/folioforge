@@ -1,0 +1,30 @@
+# Preserve links from the former combined product after both new sites are live.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name folioforge.ljhboard.cn;
+
+    location ~ ^/(convert|images)(/|$) {
+        return 301 https://img.ljhboard.cn$request_uri;
+    }
+    location / {
+        return 301 https://pdf.ljhboard.cn$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name folioforge.ljhboard.cn;
+    ssl_certificate /www/server/panel/vhost/cert/ai.ljhboard.cn/fullchain.pem;
+    ssl_certificate_key /www/server/panel/vhost/cert/ai.ljhboard.cn/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location ~ ^/(convert|images)(/|$) {
+        return 301 https://img.ljhboard.cn$request_uri;
+    }
+    location / {
+        return 301 https://pdf.ljhboard.cn$request_uri;
+    }
+}

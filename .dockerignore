@@ -5,7 +5,11 @@ deploy/*
 !deploy/nginx.conf
 !apps/
 apps/*
-!apps/web/
-apps/web/*
-!apps/web/out/
-!apps/web/out/**
+!apps/pdf-web/
+apps/pdf-web/*
+!apps/pdf-web/out/
+!apps/pdf-web/out/**
+!apps/image-web/
+apps/image-web/*
+!apps/image-web/out/
+!apps/image-web/out/**

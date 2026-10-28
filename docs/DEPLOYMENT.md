@@ -1,17 +1,19 @@
 # FolioForge 上线流程
 
-正式地址：`https://folioforge.ljhboard.cn`。参考本机 `D:/code/tool`、`D:/code/site` 和 `D:/code/nextra-blog` 的 CI / Docker / 受限 SSH 流程，适配本项目的 Next 静态导出、Rust WASM、OCR 资源和 PDF 离线更新。
+> CI 与自动部署保持暂停，工作流保留在 `.github/workflows/web-deploy.yml.disabled`。当前通过 Workbench 手动发布两套独立容器，实际配置与发布验证记录见 [域名切换与上线记录](PRODUCTION-DOMAINS.md)。下文 Actions 流程仅供恢复自动部署时参考；恢复前需要补齐图片站的发布流程。两个应用的部署边界见 [架构说明](ARCHITECTURE.md)。
+
+正式地址：`https://pdf.ljhboard.cn`。参考本机 `D:/code/tool`、`D:/code/site` 和 `D:/code/nextra-blog` 的 CI / Docker / 受限 SSH 流程，适配本项目的 Next 静态导出、Rust WASM、OCR 资源和 PDF 离线更新。
 
 ## 发布路径
 
 1. PR 与 main 提交执行 `Web CI and Deploy`：安装固定 Node / pnpm / Rust，检查类型、运行引擎与 Web 测试、生成静态导出。
-2. 将 `apps/web/out/` 包装成 Nginx 镜像，标签为 `folioforge:sha-<完整提交 SHA>`。用真实容器检查 5 个页面、全部 PDF 离线资源、MIME、缓存、重定向和 404。
+2. 将 `apps/pdf-web/out/` 包装成 Nginx 镜像，标签为 `folioforge:sha-<完整提交 SHA>`。用真实容器检查 3 个页面、全部 PDF 离线资源、MIME、缓存、重定向和 404。图片应用单独构建、测试与验证镜像，部署边界见 [架构说明](ARCHITECTURE.md)。
 3. 只有 main、验证通过且**仓库变量** `ENABLE_PRODUCTION_DEPLOY=true` 才进入 production 发布。默认不开启。部署任务从同一提交重建并再次验证镜像，避免依赖 GitHub artifact 存储配额；不发布浮动 latest。
 4. 镜像经 gzip + SSH 直接导入服务器。SSH 密钥只允许调用指定发布命令，不接收任意 shell；不会把上传的脚本或 Compose 配置作为 root 安装执行。
 5. 服务器只操作 `/opt/stacks/folioforge` 的独立 Compose 项目，检查容器健康与 `/release.txt` 提交号；失败恢复之前的镜像标签。首次发布失败则停止失败服务。
 6. Action 检查正式 HTTPS 地址的页面、资源与提交号。若容器健康但公网检查失败，Action 报错，需要检查 DNS、TLS 或 CDN；不把外部路由错误当成容器失败自动反复切换。
 
-现有 `Desktop compatibility` 保留，负责 Electron 跨平台验证；新增流程单独负责 Web 上线。
+两套工作流均已停用并保留配置；恢复后 `Desktop compatibility` 用于 Electron 跨平台验证，Web 流程用于 Web 上线。
 
 ## 首次服务器准备
 
@@ -38,7 +40,7 @@ restrict,command="/usr/local/bin/folioforge-deploy-gate" ssh-ed25519 <项目专�
 
 该用户不能写 `/opt/stacks/folioforge`、发布脚本或 sudoers。服务器首次没有 `.env` 是正常状态，发布脚本会写入标签。不要手工创建 `IMAGE_TAG=latest`。
 
-配置 `folioforge.ljhboard.cn` 的 DNS、HTTPS 证书及宿主反向代理。`deploy/host-nginx.conf.example` 是独立域名证书的示例，需按实际证书位置修改；如果继续使用其他站点的 Cloudflare for SaaS 源站接入，先在现有平台配置该自定义主机名并验证适用的源站证书，不能直接假设博客证书覆盖新域名。用 `nginx -t` 验证后再重载，保留其他站点配置。
+配置 `pdf.ljhboard.cn` 的 DNS、HTTPS 证书及宿主反向代理。`deploy/host-nginx.conf.example` 是独立域名证书的示例，需按实际证书位置修改；如果继续使用其他站点的 Cloudflare for SaaS 源站接入，先在现有平台配置该自定义主机名并验证适用的源站证书，不能直接假设博客证书覆盖新域名。用 `nginx -t` 验证后再重载，保留其他站点配置。
 
 CDN 不应对 HTML、`/pdf-sw.js`、`/release.txt` 强制覆盖源站缓存规则，也不要将不存在的资源回退为 HTTP 200 首页。Umami 沿用客户端直连 `analytics.ljhboard.cn`，无需新增统计反向代理。
 
@@ -55,15 +57,15 @@ CDN 不应对 HTML、`/pdf-sw.js`、`/release.txt` 强制覆盖源站缓存规�
 | production secret | `DEPLOY_SSH_KEY` | 项目专用 SSH 私钥 |
 | production secret | `DEPLOY_KNOWN_HOSTS` | 经可信渠道核对指纹后的服务器 known_hosts 行 |
 
-不关闭主机密钥检查，不使用其他项目的私钥副本，不把私钥放进仓库。网页的公开域名与 Umami ID 在 workflow 显式设置，构建时写入产物；修改后需要新的构建。公开预览构建应使用 `NEXT_PUBLIC_SITE_INDEXABLE=false`，本 production 流程固定为 true。
+不关闭主机密钥检查，不使用其他项目的私钥副本，不把私钥放进仓库。各应用的公开域名与 Umami ID 分别在应用内提供默认值，可通过对应应用目录的 `.env.local` 或构建环境覆盖；两个应用分别使用自己的 Umami ID。修改配置需要新的构建。公开预览构建应使用 `NEXT_PUBLIC_SITE_INDEXABLE=false`，本 production 流程固定为 true。新域名配置和当前准备情况见 [域名切换准备](PRODUCTION-DOMAINS.md)。
 
-合入 main 会触发验证和条件发布；首次也可在 main 手动运行 workflow。开启开关不会发布本地未提交的内容，必须先让待发布内容进入 main。相同 SHA 已经部署时会拒绝覆盖已有标签，需要发布新提交。
+当前合入 main 不会运行已停用的工作流。将来恢复时，main 提交才会触发验证和条件发布；开启仓库变量本身不会发布内容。相同 SHA 已经部署时会拒绝覆盖已有标签，需要发布新提交。
 
 ## 本地验证与镜像
 
 ```powershell
-pnpm --filter @pixelforge/web build
-pnpm --filter @pixelforge/web test
+pnpm build:pdf
+pnpm --filter @pixelforge/pdf-web test
 # 把下面的 SHA 换为待发布的完整提交号。
 docker build --build-arg RELEASE_SHA=<40位SHA> -t folioforge:sha-<40位SHA> .
 node scripts/test-runtime-image.mjs folioforge:sha-<40位SHA> <40位SHA>
