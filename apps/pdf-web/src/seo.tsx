@@ -31,7 +31,7 @@ export function PageSchema({ page }: { page: SitePage }) {
   const graph: Record<string, unknown>[] = [
     { '@type': 'WebPage', '@id': url + '#webpage', url, name: title, description, inLanguage: 'zh-CN', isPartOf: { '@id': siteUrl + '/#website' } },
   ];
-  if (page === 'home') graph.push({ '@type': 'WebSite', '@id': siteUrl + '/#website', url: siteUrl + '/', name: 'FolioForge 页匠', alternateName: '页匠', inLanguage: 'zh-CN', description });
+  if (page === 'home') graph.push({ '@type': 'WebSite', '@id': siteUrl + '/#website', url: siteUrl + '/', name: 'FolioForge 页匠', alternateName: ['页匠', 'FolioForge'], inLanguage: 'zh-CN', description });
   else graph.push({ '@type': 'BreadcrumbList', itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'FolioForge 页匠', item: siteUrl + '/' },
     { '@type': 'ListItem', position: 2, name: title.split(' · ')[0], item: url },
@@ -41,6 +41,23 @@ export function PageSchema({ page }: { page: SitePage }) {
     url, description, applicationCategory: 'UtilitiesApplication', operatingSystem: 'Web browser', inLanguage: 'zh-CN',
     isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     browserRequirements: 'Requires JavaScript, WebAssembly and a modern browser.',
+    featureList: [
+      '多份 PDF 合并与页序自由调整',
+      '拆分每页为独立文档并打包 ZIP',
+      '本地轻量模型中英文扫描件 OCR',
+      '原笔迹手写签名与透明印章',
+      '无损对象重存与扫描件降采样压缩',
+      '双面扫描交错排序',
+      '墨迹阈值空白页检测',
+      '页面裁剪与 A4 适配排版',
+      '多页拼版 (2合1 / 4合1)',
+      '文档已有文字提取与双文档对比',
+    ],
+  });
+  if (page === 'guide') graph.push({
+    '@type': 'TechArticle', '@id': url + '#article', headline: title, description, inLanguage: 'zh-CN',
+    datePublished: '2026-10-27T00:00:00+08:00', dateModified: '2026-10-29T00:00:00+08:00', mainEntityOfPage: url,
+    author: { '@type': 'Organization', name: 'FolioForge 页匠', url: siteUrl + '/' },
   });
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c') }} />;
 }

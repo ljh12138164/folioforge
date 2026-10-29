@@ -161,16 +161,28 @@
   .drag-overlay>span { @apply text-sm text-muted; }
   .home-page { @apply min-h-dvh flex flex-col bg-canvas; }
   .home-main { @apply max-w-[1340px]; }
-  .home-intro { @apply flex flex-col items-center pt-6 pb-5 text-center; }
-  .home-intro h1 { @apply text-[28px] leading-[1.22] font-semibold tracking-[-0.03em] text-ink; }
-  .home-intro p { @apply mx-auto mt-2 max-w-[68ch] text-sm leading-6 text-muted; }
-  .home-actions { @apply mt-4 flex justify-center gap-3; }
+  .home-intro { @apply flex flex-col items-center pt-8 pb-6 text-center; }
+  .home-hero-badge {
+    @apply inline-flex items-center gap-2 rounded-full border border-line/80 bg-panel px-3.5 py-1 text-xs font-medium text-ink;
+    box-shadow: var(--shadow-pill);
+  }
+  .home-hero-badge-icon { @apply text-primary; }
+  .home-intro h1 { @apply mt-3 text-[32px] leading-[1.2] font-bold tracking-[-0.035em] text-ink; }
+  .home-intro p { @apply mx-auto mt-2.5 max-w-[70ch] text-sm leading-relaxed text-muted; }
+  .home-actions { @apply mt-5 flex flex-wrap justify-center gap-3; }
+  .home-hero-strip {
+    @apply mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-4;
+  }
+  .home-strip-item {
+    @apply inline-flex items-center gap-1.5 rounded-lg bg-surface/80 px-3 py-1 text-xs font-medium text-muted;
+  }
+  .home-strip-item svg { @apply text-primary; }
 
   .home-demo {
-    @apply overflow-hidden rounded-2xl border border-line/70 bg-panel;
+    @apply overflow-hidden rounded-2xl border border-line/75 bg-panel;
     box-shadow: var(--shadow-card);
   }
-  .home-picture { @apply relative h-[300px] overflow-hidden bg-checker-alt; }
+  .home-picture { @apply relative h-[360px] overflow-hidden bg-checker-alt; }
   .home-picture>img { @apply absolute inset-0 size-full object-cover; }
   .home-picture>input { @apply absolute inset-0 z-3 m-0 size-full cursor-ew-resize opacity-0; }
   .home-picture:focus-within { @apply outline-2 -outline-offset-2 outline-accent; }
@@ -179,42 +191,55 @@
     @apply pointer-events-none absolute inset-x-0 bottom-4 z-4 mx-auto flex w-fit items-center gap-2 rounded-full border border-line bg-panel/95 px-4 py-1.5 text-xs font-medium text-accent shadow-md backdrop-blur-md;
   }
 
-  .home-settings { @apply flex min-h-15 flex-wrap items-center justify-between gap-4 border-t border-line/70 bg-surface/50 px-5 py-2.5; }
+  .home-settings { @apply flex min-h-16 flex-wrap items-center justify-between gap-4 border-t border-line/70 bg-surface/50 px-5 py-3; }
+  .home-settings-title { @apply shrink-0 text-xs font-semibold text-ink; }
   .home-settings fieldset { @apply m-0 flex min-w-0 items-center gap-3 border-0 p-0; }
-  .home-settings fieldset>span { @apply shrink-0 text-xs font-medium text-muted; }
-  .home-format-options { @apply flex gap-1 rounded-lg bg-panel p-1; box-shadow: var(--shadow-pill); }
+  .home-format-options { @apply flex gap-1 rounded-xl bg-panel p-1; box-shadow: var(--shadow-pill); }
   .home-format-options label {
-    @apply relative flex min-h-8 min-w-14 cursor-pointer items-center justify-center gap-1 rounded-md px-2.5 font-mono text-xs font-medium text-muted transition-colors hover:text-ink;
+    @apply relative flex min-h-8 min-w-16 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 font-mono text-xs font-medium text-muted transition-colors hover:text-ink;
   }
   .home-format-options label.chosen { @apply bg-accent-soft font-semibold text-accent; }
   .home-format-options input { @apply absolute size-full cursor-pointer opacity-0; }
   .home-format-options label:focus-within { @apply outline-2 outline-offset-2 outline-accent; }
   .home-quality, .home-size { @apply flex items-center gap-2.5 text-xs font-medium text-muted; }
-  .home-quality input { @apply w-28 cursor-ew-resize; }
+  .home-quality input { @apply w-28 cursor-ew-resize accent-primary; }
   .home-quality output { @apply min-w-6 font-mono text-xs font-semibold text-ink tabular-nums; }
+  .home-quality-badge { @apply rounded-md bg-surface px-1.5 py-0.5 text-[11px] font-medium text-accent; }
   .home-size select {
-    @apply min-h-9 cursor-pointer rounded-lg border border-transparent bg-panel px-3 text-xs font-medium text-ink transition-colors hover:border-control-line;
+    @apply min-h-9 cursor-pointer rounded-lg border border-line/60 bg-panel px-3 text-xs font-medium text-ink transition-colors hover:border-control-line focus:border-primary;
     box-shadow: var(--shadow-pill);
   }
-  .home-demo-note { @apply mt-2.5 text-xs leading-5 text-muted; }
+  .home-demo-note { @apply mt-3 flex items-start gap-2 text-xs leading-5 text-muted; }
+  .home-demo-note svg { @apply mt-0.5 text-primary; }
+  .home-demo-note p { @apply m-0; }
   .home-error { @apply mt-3 text-sm leading-6 text-error; }
 
-  .home-formats { @apply mt-7 scroll-mt-6 border-t border-line/80 pt-5; }
-  .home-formats h2, .home-guide h2 { @apply text-base font-semibold tracking-tight text-ink; }
-  .home-format-list { @apply mt-3.5 grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2; }
+  .home-formats { @apply mt-9 scroll-mt-6 border-t border-line/80 pt-6; }
+  .home-section-header { @apply flex items-baseline justify-between gap-3; }
+  .home-formats h2 { @apply text-lg font-semibold tracking-tight text-ink; }
+  .home-section-count { @apply rounded-md bg-surface px-2 py-0.5 font-mono text-xs text-muted; }
+  .home-format-list { @apply mt-4 grid grid-cols-[repeat(auto-fill,minmax(118px,1fr))] gap-2.5; }
   .home-format-list a {
-    @apply flex min-h-17 flex-col items-center justify-center gap-1.5 rounded-xl border border-line/60 bg-panel px-2 text-center font-mono text-xs font-medium text-ink no-underline transition-all duration-150 hover:border-accent-line hover:bg-accent-soft/50 hover:text-accent;
+    @apply relative flex min-h-[82px] flex-col items-center justify-center gap-1 rounded-2xl border border-line/65 bg-panel p-2.5 text-center no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-accent-line hover:bg-accent-soft/40 hover:text-accent hover:shadow-md;
     box-shadow: var(--shadow-card);
   }
-  .home-formats>p { @apply mt-3.5 flex items-center gap-2 text-xs leading-5 text-muted; }
+  .home-format-name { @apply font-mono text-xs font-semibold text-ink; }
+  .home-format-tag { @apply rounded bg-surface/80 px-1.5 py-0.5 text-[10px] text-muted; }
+  .home-format-list a:hover .home-format-tag { @apply bg-accent-soft text-accent font-medium; }
+  .home-format-tip { @apply mt-3.5 flex items-center gap-2 text-xs leading-5 text-muted; }
 
   .home-guide {
-    @apply my-7 grid scroll-mt-6 grid-cols-[1fr_1.6fr] gap-8 rounded-2xl border border-line/70 bg-panel p-6;
+    @apply my-9 scroll-mt-6 rounded-2xl border border-line/75 bg-panel p-6;
     box-shadow: var(--shadow-card);
   }
-  .home-guide p { @apply max-w-[65ch] text-sm leading-6 text-muted; }
-  .home-guide p+p { @apply mt-2; }
-  .home-guide a { @apply mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline; }
+  .home-guide-header { @apply border-b border-line/70 pb-4 mb-5; }
+  .home-guide-header h2 { @apply text-lg font-semibold tracking-tight text-ink; }
+  .home-guide-subtitle { @apply m-0 mt-1 text-xs text-muted; }
+  .home-guide-cards { @apply grid grid-cols-3 gap-5; }
+  .home-guide-card strong { @apply block text-xs font-semibold text-ink; }
+  .home-guide-card p { @apply m-0 mt-1.5 text-xs leading-[1.75] text-muted; }
+  .home-guide-action { @apply col-span-full pt-3 border-t border-line/70 flex justify-end; }
+  .home-guide-action a { @apply inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline; }
   .image-comparison { @apply mx-5 mt-3 mb-3 min-w-0 overflow-hidden rounded-xl border border-line/70 bg-surface/35; }
   .image-compare-toolbar { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line/70 bg-panel px-3.5 py-2; }
   .image-compare-toolbar>strong { @apply flex items-center gap-2 text-xs font-semibold text-ink; }
@@ -258,21 +283,23 @@
 }
 @media (max-width: 760px) {
 
-  .home-intro { @apply pt-5 pb-4; }
-  .home-intro h1 { @apply text-[23px]; }
-  .home-intro p { @apply max-w-[34ch] text-xs; }
-  .home-picture { @apply h-56; }
+  .home-intro { @apply pt-6 pb-4; }
+  .home-intro h1 { @apply text-[24px]; }
+  .home-intro p { @apply max-w-[36ch] text-xs leading-relaxed; }
+  .home-hero-strip { @apply gap-1.5; }
+  .home-picture { @apply h-60; }
   .home-picture .compare-label { @apply max-w-[45%] truncate px-2 text-[11px]; }
-  .home-settings { @apply justify-start gap-3.5 px-4 py-3.5; }
+  .home-settings { @apply justify-start gap-3 px-4 py-3; }
   .home-settings fieldset { @apply w-full flex-wrap gap-2; }
   .home-format-options { @apply w-full; }
   .home-format-options label { @apply min-w-0 flex-1 px-1.5; }
-  .home-quality { @apply w-full; }
+  .home-quality { @apply w-full flex-wrap; }
   .home-quality input { @apply flex-1; }
   .home-size { @apply w-full justify-between; }
-  .home-format-list { @apply grid-cols-4; }
-  .home-format-list a { @apply min-h-15 text-[11px]; }
-  .home-guide { @apply grid-cols-1 gap-3 p-4; }
+  .home-format-list { @apply grid-cols-3 gap-2; }
+  .home-format-list a { @apply min-h-[72px] text-[11px]; }
+  .home-guide { @apply p-4; }
+  .home-guide-cards { @apply grid-cols-1 gap-3.5; }
   .setting-section { @apply px-4 py-3.5; }
   .convert-actions { @apply px-4 pt-3.5 pb-4; }
   .preview { @apply mx-3.5 h-[240px]; }
