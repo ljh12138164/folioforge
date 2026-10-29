@@ -32,7 +32,7 @@ export function PageSchema({ page }: { page: SitePage }) {
   const graph: Record<string, unknown>[] = [
     { '@type': 'WebPage', '@id': url + '#webpage', url, name: title, description, inLanguage: 'zh-CN', isPartOf: { '@id': siteUrl + '/#website' } },
   ];
-  if (page === 'home') graph.push({ '@type': 'WebSite', '@id': siteUrl + '/#website', url: siteUrl + '/', name: 'PixelForge', inLanguage: 'zh-CN', description });
+  if (page === 'home') graph.push({ '@type': 'WebSite', '@id': siteUrl + '/#website', url: siteUrl + '/', name: 'PixelForge', alternateName: ['PixelForge 图片转换', '图工'], inLanguage: 'zh-CN', description });
   else graph.push({ '@type': 'BreadcrumbList', itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'PixelForge', item: siteUrl + '/' },
     { '@type': 'ListItem', position: 2, name: title.split(' · ')[0], item: url },
@@ -42,6 +42,20 @@ export function PageSchema({ page }: { page: SitePage }) {
     url, description, applicationCategory: 'UtilitiesApplication', operatingSystem: 'Web browser', inLanguage: 'zh-CN',
     isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     browserRequirements: 'Requires JavaScript, WebAssembly and a modern browser.',
+    featureList: [
+      '16 种图片格式本地批量转换',
+      'WebP、AVIF、JPEG 等有损画质精细调节',
+      '保持等比缩放与最大宽高限制',
+      'Rust WebAssembly 图像矢量 SVG 描摹',
+      '实时输入输出像素级滑块核对',
+      '多线程 Web Worker 并发队列处理',
+      '批量转换一键打包 ZIP 下载',
+    ],
+  });
+  if (page === 'guide') graph.push({
+    '@type': 'TechArticle', '@id': url + '#article', headline: title, description, inLanguage: 'zh-CN',
+    datePublished: '2026-10-27T00:00:00+08:00', dateModified: '2026-10-29T00:00:00+08:00', mainEntityOfPage: url,
+    author: { '@type': 'Organization', name: 'PixelForge', url: siteUrl + '/' },
   });
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c') }} />;
 }

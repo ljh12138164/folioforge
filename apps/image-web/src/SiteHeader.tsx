@@ -5,15 +5,16 @@ export function SiteHeader({ active, onFormats, onHelp }: { active: 'home' | 'im
     <a className="brand" href="/" aria-label="PixelForge 首页">
       <span className="brand-symbol" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M5.5 4.5C5.5 3.67 6.17 3 7 3H14.5L19 7.5V19.5C19 20.33 18.33 21 17.5 21H7C6.17 21 5.5 20.33 5.5 19.5V4.5Z" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round" />
-          <path d="M14.2 3V7.6H18.8" stroke="var(--color-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M8.5 9H12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <rect x="8.5" y="12" width="7.5" height="5.5" rx="1.2" stroke="currentColor" strokeWidth="1.45" />
-          <circle cx="10.6" cy="14" r="0.8" fill="var(--color-primary)" />
-          <path d="M9.1 16.9L11.3 14.7L12.9 16L14.2 14.5L15.4 16.9" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity="0.28" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="13.5" y="13.5" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity="0.28" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity="0.85" />
+          <rect x="13.5" y="3.5" width="7" height="7" rx="1.6" fill="var(--color-primary)" />
+          <rect x="9.3" y="9.3" width="5.4" height="5.4" rx="1" transform="rotate(45 12 12)" fill="#ffffff" stroke="var(--color-primary)" strokeWidth="1.3" />
+          <circle cx="12" cy="12" r="1" fill="var(--color-primary)" />
         </svg>
       </span>
       <span className="brand-word">Pixel<span className="brand-light">Forge</span></span>
+      <span className="brand-tag">图工</span>
     </a>
     <nav aria-label="主导航">
       <div className="nav-routes">

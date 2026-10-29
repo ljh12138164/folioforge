@@ -22,38 +22,79 @@
   }
   .pdf-empty h2 { @apply text-lg font-semibold tracking-tight text-ink; }
   .tools-intro {
-    @apply flex flex-wrap items-end justify-between gap-6 border-b border-line/80 pt-7 pb-6;
+    @apply flex flex-col items-start gap-5 border-b border-line/80 pt-7 pb-8;
   }
-  .tools-intro-copy { @apply max-w-[64ch]; }
-  .tools-intro h1 { @apply m-0 text-[28px] leading-[1.2] font-semibold tracking-[-0.03em] text-ink; }
-  .tools-intro-copy>p { @apply mt-2 mb-0 text-[13.5px] leading-6 text-muted; }
-  .tools-intro-actions { @apply flex flex-wrap items-center gap-2.5; }
-  .tools-intro .primary, .tools-intro .secondary { @apply inline-flex min-h-10 items-center gap-2 no-underline; }
-
-  .tools-directory { @apply pt-5 pb-3; }
-  .tools-controls {
-    @apply flex flex-wrap items-center justify-between gap-3 pb-5;
-  }
-  .tools-filter {
-    @apply flex items-center gap-1 rounded-xl bg-surface p-1;
-  }
-  .tools-filter>button {
-    @apply min-h-8.5 gap-1.5 rounded-lg px-3.5 py-1.5 text-[12.5px] font-medium whitespace-nowrap text-muted hover:text-ink;
-  }
-  .tools-filter>button[aria-pressed=true] {
-    @apply bg-panel font-semibold text-ink;
+  .tools-hero-badge {
+    @apply inline-flex items-center gap-2 rounded-full border border-line/80 bg-panel px-3 py-1 text-xs font-medium text-ink;
     box-shadow: var(--shadow-pill);
   }
-  .tools-filter span { @apply rounded-full bg-canvas/80 px-1.5 py-0.5 font-mono text-[10.5px] text-muted tabular-nums; }
-  .tools-filter>button[aria-pressed=true] span { @apply bg-accent-soft font-semibold text-accent; }
+  .tools-hero-badge-icon { @apply text-primary; }
+  .tools-intro-copy { @apply max-w-[70ch]; }
+  .tools-intro h1 { @apply m-0 text-[32px] leading-[1.18] font-bold tracking-[-0.035em] text-ink; }
+  .tools-intro-copy>p { @apply mt-2.5 mb-0 text-[14px] leading-relaxed text-muted; }
+  .tools-intro-actions { @apply flex flex-wrap items-center gap-3 pt-1; }
+  .tools-intro .primary, .tools-intro .secondary { @apply inline-flex min-h-10 items-center gap-2 no-underline px-4.5 rounded-xl font-semibold; }
 
+  /* 4 Workflow Pillars */
+  .tools-pillars {
+    @apply mt-2 grid w-full grid-cols-4 gap-3.5;
+  }
+  .tools-pillar {
+    @apply flex flex-col justify-between gap-3 rounded-2xl border border-line/75 bg-panel p-4 text-ink no-underline transition-all duration-150 hover:-translate-y-0.5 hover:border-accent-line hover:shadow-md;
+    box-shadow: var(--shadow-card);
+  }
+  .tools-pillar-icon {
+    @apply grid size-10 place-items-center rounded-xl bg-surface text-ink transition-colors duration-150;
+  }
+  .tools-pillar:hover .tools-pillar-icon {
+    @apply bg-accent-soft text-primary;
+  }
+  .tools-pillar-body strong {
+    @apply block text-[13.5px] font-semibold text-ink;
+  }
+  .tools-pillar-body p {
+    @apply mt-1 m-0 text-xs leading-[1.55] text-muted;
+  }
+  .tools-pillar-link {
+    @apply mt-auto inline-flex items-center gap-1 text-[11.5px] font-semibold text-accent;
+  }
+  .tools-pillar:hover .tools-pillar-link svg {
+    @apply translate-x-0.5;
+  }
+
+  .tools-directory { @apply pt-6 pb-4; }
+  .tools-controls {
+    @apply flex flex-wrap items-center justify-between gap-4 pb-6;
+  }
+  .tools-search-wrapper {
+    @apply flex flex-wrap items-center gap-3 flex-1 min-w-[280px];
+  }
   .tools-search {
-    @apply flex min-h-10 w-[min(340px,100%)] items-center gap-2 rounded-xl border border-line/80 bg-panel px-3.5 text-muted focus-within:border-primary focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-accent;
+    @apply flex min-h-10 w-[min(360px,100%)] items-center gap-2 rounded-xl border border-line/80 bg-panel px-3.5 text-muted focus-within:border-primary focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-accent;
     box-shadow: var(--shadow-pill);
   }
   .tools-search input { @apply w-full min-w-0 border-none bg-transparent py-2 text-xs text-ink outline-none placeholder:text-muted/80 focus-visible:outline-none; }
   .tools-search input::-webkit-search-cancel-button { @apply hidden; }
   .tools-search button { @apply min-h-6 min-w-6 rounded-md hover:bg-surface hover:text-ink; }
+
+  .tools-search-tags {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+  .tools-tags-label {
+    @apply inline-flex items-center gap-1 text-xs font-medium text-muted;
+  }
+  .tools-tag-chip {
+    @apply inline-flex min-h-7 items-center rounded-lg border border-line/70 bg-panel px-2.5 text-[11.5px] font-medium text-muted transition-colors hover:border-accent-line hover:text-ink;
+  }
+  .tools-tag-chip.active {
+    @apply border-accent-line bg-accent-soft font-semibold text-accent;
+  }
+  .tools-status-badge {
+    @apply flex items-center gap-2 rounded-xl bg-surface px-3 py-1.5 text-xs text-muted;
+  }
+  .tools-status-badge strong {
+    @apply font-semibold text-accent;
+  }
 
   .tools-groups { @apply flex flex-col gap-8; }
   .tools-group { @apply grid grid-cols-[220px_minmax(0,1fr)] items-start gap-6; }
@@ -68,27 +109,65 @@
     box-shadow: var(--shadow-card);
   }
   .tools-entry {
-    @apply flex min-h-[78px] items-start gap-3.5 border-b border-r border-line/65 bg-panel p-4 -mr-px -mb-px no-underline transition-colors duration-150 hover:bg-surface/50;
+    @apply flex min-h-[84px] items-start gap-3.5 border-b border-r border-line/65 bg-panel p-4 -mr-px -mb-px no-underline transition-colors duration-150 hover:bg-surface/50;
   }
   .tools-entry-icon {
-    @apply grid size-9 shrink-0 place-items-center rounded-xl bg-surface text-ink transition-colors duration-150;
+    @apply grid size-9.5 shrink-0 place-items-center rounded-xl bg-surface text-ink transition-colors duration-150;
   }
   .tools-entry:hover .tools-entry-icon, .tools-entry:focus-visible .tools-entry-icon {
     @apply bg-accent-soft text-primary;
   }
   .tools-entry>div { @apply min-w-0 flex-1; }
-  .tools-entry h3 { @apply m-0 mb-1 text-[13.5px] font-semibold text-ink; }
+  .tools-entry-head {
+    @apply mb-1 flex items-baseline justify-between gap-2;
+  }
+  .tools-entry h3 { @apply m-0 text-[13.5px] font-semibold text-ink; }
+  .tools-entry-tag {
+    @apply shrink-0 rounded bg-surface/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted tabular-nums;
+  }
+  .tools-entry:hover .tools-entry-tag {
+    @apply bg-accent-soft text-accent font-semibold;
+  }
   .tools-entry p { @apply m-0 text-xs leading-[1.6] text-muted; }
-  .tools-entry-arrow { @apply mt-0.5 ml-auto text-muted/65 transition-all duration-150; }
+  .tools-entry-arrow { @apply mt-0.5 ml-1 text-muted/65 transition-all duration-150 shrink-0; }
   .tools-entry:hover .tools-entry-arrow { @apply translate-x-0.5 text-primary; }
 
+  /* Studio Boundary Accordion */
   .tools-faq {
-    @apply my-5 rounded-2xl border border-line/70 bg-panel px-5 py-4 text-xs text-muted;
+    @apply my-6 rounded-2xl border border-line/75 bg-panel text-xs text-muted overflow-hidden transition-colors;
     box-shadow: var(--shadow-card);
   }
-  .tools-faq summary { @apply cursor-pointer font-semibold text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent; }
-  .tools-faq p { @apply mt-2.5 max-w-[85ch] leading-[1.85]; }
-  .tools-faq a { @apply mt-2.5 inline-flex items-center gap-1.5 font-semibold text-accent hover:underline; }
+  .tools-faq summary {
+    @apply flex cursor-pointer items-center justify-between px-5 py-4 font-semibold text-ink list-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent;
+  }
+  .tools-faq summary::-webkit-details-marker { @apply hidden; }
+  .tools-faq-summary-title {
+    @apply flex items-center gap-2.5 text-[13.5px];
+  }
+  .tools-faq-chevron {
+    @apply text-muted transition-transform duration-200;
+  }
+  .tools-faq[open] .tools-faq-chevron {
+    @apply rotate-180 text-primary;
+  }
+  .tools-faq-content {
+    @apply border-t border-line/70 bg-surface/30 px-5 pt-4 pb-5;
+  }
+  .tools-faq-grid {
+    @apply grid grid-cols-3 gap-5;
+  }
+  .tools-faq-item strong {
+    @apply block text-xs font-semibold text-ink;
+  }
+  .tools-faq-item p {
+    @apply m-0 mt-1.5 text-xs leading-[1.75] text-muted;
+  }
+  .tools-faq-footer {
+    @apply mt-4 pt-3.5 border-t border-line/70 flex justify-end;
+  }
+  .tools-faq-footer a {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline;
+  }
   .tools-no-results {
     @apply flex flex-col items-center gap-2 rounded-2xl border border-line/70 bg-panel px-5 py-14 text-muted;
     box-shadow: var(--shadow-card);
@@ -356,24 +435,31 @@
 @media (max-width: 900px) {
   .pdf-workspace { @apply grid-cols-1; }
   .tools-group { @apply grid-cols-1 gap-3; }
+  .tools-pillars { @apply grid-cols-2; }
+  .tools-faq-grid { @apply grid-cols-1 gap-3.5; }
 }
 @media (max-width: 760px) {
   .pdf-studio-bar { @apply pt-3 pb-2.5; }
   .pdf-studio-title h1 { @apply text-base; }
   .pdf-status-pill { @apply px-2.5 py-0.5 text-[11px]; }
 
-  .tools-intro { @apply gap-4 pt-5 pb-4; }
-  .tools-intro h1 { @apply text-[23px]; }
-  .tools-intro-copy>p { @apply text-xs; }
+  .tools-intro { @apply gap-4 pt-5 pb-5; }
+  .tools-intro h1 { @apply text-[24px]; }
+  .tools-intro-copy>p { @apply text-xs leading-5; }
   .tools-intro-actions { @apply w-full; }
   .tools-intro .primary, .tools-intro .secondary { @apply flex-1 justify-center px-3 py-2 text-xs; }
-  .tools-controls { @apply flex-col items-stretch gap-2.5 pb-4; }
-  .tools-filter { @apply w-full justify-between; }
-  .tools-filter>button { @apply flex-1 justify-center px-2 text-xs; }
+  .tools-pillars { @apply grid-cols-1 gap-2.5; }
+  .tools-controls { @apply flex-col items-stretch gap-3 pb-4; }
+  .tools-search-wrapper { @apply w-full; }
   .tools-search { @apply w-full; }
+  .tools-search-tags { @apply w-full; }
+  .tools-status-badge { @apply w-full justify-between; }
   .tools-list { @apply grid-cols-1; }
   .tools-entry { @apply min-h-[72px] gap-3 border-r-0 p-3.5; }
-  .tools-faq { @apply px-4 py-3.5; }
+  .tools-entry-head { @apply flex-wrap; }
+  .tools-faq { @apply my-4; }
+  .tools-faq summary { @apply px-4 py-3.5; }
+  .tools-faq-content { @apply px-4 pt-3 pb-4; }
   .tools-home footer { @apply flex-col items-start gap-2; }
 
   .pdf-tool-tabs { @apply grid-cols-3 gap-1 p-1.5; }
