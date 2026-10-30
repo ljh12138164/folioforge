@@ -1,8 +1,14 @@
+'use client';
+
 import { ThemePicker } from '@pixelforge/ui/ThemePicker';
+import { LocalePicker } from '@pixelforge/ui/LocalePicker';
+import { usePdfI18n } from './i18n';
 
 export function SiteHeader({ active, onHelp }: { active: 'home' | 'pdf' | 'guide'; onHelp?: () => void }) {
+  const { t } = usePdfI18n();
+
   return <header className="header site-header">
-    <a className="brand" href="/" aria-label="FolioForge 页匠 首页">
+    <a className="brand" href="/" aria-label={t.header.brandAria}>
       <span className="brand-symbol" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
           <rect x="8.5" y="3.5" width="11" height="15" rx="1.5" fill="currentColor" fillOpacity="0.22" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.4" />
@@ -14,17 +20,20 @@ export function SiteHeader({ active, onHelp }: { active: 'home' | 'pdf' | 'guide
         </svg>
       </span>
       <span className="brand-word">Folio<span className="brand-light">Forge</span></span>
-      <span className="brand-tag">页匠</span>
+      <span className="brand-tag">{t.header.brandTag}</span>
     </a>
-    <nav aria-label="主导航">
+    <nav aria-label={t.header.navAria}>
       <div className="nav-routes">
-        <a href="/" aria-current={active === 'home' ? 'page' : undefined}>首页</a>
-        <a href="/pdf/" aria-current={active === 'pdf' ? 'page' : undefined}>PDF 工具</a>
+        <a href="/" aria-current={active === 'home' ? 'page' : undefined}>{t.header.home}</a>
+        <a href="/pdf/" aria-current={active === 'pdf' ? 'page' : undefined}>{t.header.pdf}</a>
       </div>
       <div className="nav-aux">
-        {onHelp ? <button type="button" onClick={onHelp}>使用指南</button> : <a href="/guide/" aria-current={active === 'guide' ? 'page' : undefined}>使用指南</a>}
+        {onHelp ? <button type="button" onClick={onHelp}>{t.header.guide}</button> : <a href="/guide/" aria-current={active === 'guide' ? 'page' : undefined}>{t.header.guide}</a>}
       </div>
     </nav>
-    <ThemePicker />
+    <div className="header-controls">
+      <LocalePicker />
+      <ThemePicker />
+    </div>
   </header>;
 }

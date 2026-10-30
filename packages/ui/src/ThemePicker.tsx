@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
+import { useLocale } from './i18n';
+import type { Locale } from './i18n';
 
 type Preference = 'light' | 'dark' | 'system';
 declare global { interface Window { desktopTheme?: { setPreference: (value: Preference) => void } } }
 
-const modes: { value: Preference; label: string; Icon: typeof Sun }[] = [
-  { value: 'light', label: '浅色', Icon: Sun },
-  { value: 'dark', label: '深色', Icon: Moon },
-  { value: 'system', label: '系统', Icon: Monitor },
-];
+const themeLabels: Record<Locale, { light: string; dark: string; system: string; label: string; modeSuffix: string }> = {
+  'zh-CN': { light: '浅色', dark: '深色', system: '系统', label: '外观主题', modeSuffix: '模式' },
+  'zh-TW': { light: '淺色', dark: '深色', system: '系統', label: '外觀主題', modeSuffix: '模式' },
+  'en-US': { light: 'Light', dark: 'Dark', system: 'System', label: 'Appearance', modeSuffix: ' mode' },
+  'ja-JP': { light: 'ライト', dark: 'ダーク', system: 'システム', label: '外観テーマ', modeSuffix: 'モード' },
+  'ko-KR': { light: '라이트', dark: '다크', system: '시스템', label: '화면 테마', modeSuffix: ' 모드' },
+  'es-ES': { light: 'Claro', dark: 'Oscuro', system: 'Sistema', label: 'Tema', modeSuffix: '' },
+  'de-DE': { light: 'Hell', dark: 'Dunkel', system: 'System', label: 'Darstellung', modeSuffix: '' },
+  'fr-FR': { light: 'Clair', dark: 'Sombre', system: 'Système', label: 'Apparence', modeSuffix: '' },
+};
 
 function applyTheme(value: Preference) {
   const root = document.documentElement;
@@ -22,6 +29,8 @@ function applyTheme(value: Preference) {
 
 export function ThemePicker() {
   const [preference, setPreference] = useState<Preference>('system');
+  const { locale } = useLocale();
+  const t = themeLabels[locale] || themeLabels['zh-CN'];
 
   useEffect(() => {
     let initial: Preference = 'system';
@@ -48,14 +57,20 @@ export function ThemePicker() {
     window.desktopTheme?.setPreference(value);
   }
 
+  const modes: { value: Preference; label: string; Icon: typeof Sun }[] = [
+    { value: 'light', label: t.light, Icon: Sun },
+    { value: 'dark', label: t.dark, Icon: Moon },
+    { value: 'system', label: t.system, Icon: Monitor },
+  ];
+
   return (
-    <div className="theme-picker" role="group" aria-label="外观主题">
+    <div className="theme-picker" role="group" aria-label={t.label}>
       {modes.map(({ value, label, Icon }) => (
         <button
           key={value}
           type="button"
           aria-pressed={preference === value}
-          title={`${label}模式`}
+          title={`${label}${t.modeSuffix}`}
           className={preference === value ? 'active' : ''}
           onClick={() => changeTheme(value)}
         >
