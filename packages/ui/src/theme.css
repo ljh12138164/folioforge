@@ -110,6 +110,18 @@
   .nav-aux a, .nav-aux button {
     @apply inline-flex min-h-8 items-center justify-center px-1 text-[12.5px] font-medium whitespace-nowrap text-muted no-underline hover:text-ink;
   }
+  .header-controls {
+    @apply flex shrink-0 items-center gap-1.5;
+  }
+  .locale-picker {
+    @apply flex shrink-0 items-center gap-1 rounded-lg bg-surface px-2 py-1 text-muted transition-colors hover:text-ink;
+  }
+  .locale-picker select {
+    @apply cursor-pointer appearance-none border-none bg-transparent pr-0.5 text-xs font-medium text-muted outline-none transition-colors hover:text-ink focus-visible:outline-accent;
+  }
+  .locale-picker select option {
+    @apply bg-panel py-1 text-xs text-ink;
+  }
   .theme-picker {
     @apply flex shrink-0 items-center gap-0.5 rounded-lg bg-surface p-1 text-muted;
   }
@@ -178,7 +190,7 @@
 }
 @media (max-width: 760px) {
   .header.site-header { @apply h-auto flex-wrap gap-y-2 px-3.5 py-2.5; }
-  .theme-picker { @apply ml-auto; }
+  .header-controls, .theme-picker { @apply ml-auto; }
   .theme-picker button span { @apply hidden; }
   .site-header nav { @apply order-3 ml-0 w-full flex-wrap justify-between gap-2; }
   .nav-routes { @apply flex-1 justify-between; }
