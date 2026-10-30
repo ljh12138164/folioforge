@@ -1,27 +1,6 @@
 @import "tailwindcss";
 @import "@pixelforge/ui/theme.css";
 @layer components {
-  .pdf-studio-bar,
-  .workspace-intro {
-    @apply flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1.5 pt-3.5 pb-3;
-  }
-  .pdf-studio-title {
-    @apply flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1;
-  }
-  .pdf-studio-title h1 {
-    @apply m-0 text-[17px] leading-snug font-semibold tracking-[-0.02em] whitespace-nowrap text-ink;
-  }
-  .pdf-studio-sep { @apply h-3.5 w-px shrink-0 bg-control-line; }
-  .pdf-mode-badge {
-    @apply rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-accent;
-  }
-  .pdf-mode-summary {
-    @apply m-0 truncate text-xs text-muted;
-  }
-  .pdf-status-pill {
-    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[11.5px] font-medium whitespace-nowrap text-muted tabular-nums;
-  }
-
   .task-controls {
     @apply mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line/80 bg-panel px-4 py-2.5 text-xs text-muted;
     box-shadow: var(--shadow-card);
@@ -303,11 +282,6 @@
   .image-comparison:fullscreen .image-compare-stage { @apply h-auto min-h-0 flex-1; }
 }
 @media (max-width: 760px) {
-  .pdf-studio-bar,
-  .workspace-intro { @apply pt-3 pb-2.5; }
-  .pdf-studio-title h1 { @apply text-base; }
-  .pdf-status-pill { @apply px-2.5 py-0.5 text-[11px]; }
-
   .home-intro { @apply pt-6 pb-4; }
   .home-intro h1 { @apply text-[24px]; }
   .home-intro p { @apply max-w-[36ch] text-xs leading-relaxed; }

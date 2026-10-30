@@ -428,21 +428,48 @@ export function App() {
     <SiteHeader active="convert" onFormats={() => setModal('formats')} onHelp={() => setModal('help')} />
 
     <main>
-      <section className="pdf-studio-bar workspace-intro">
-        <div className="pdf-studio-title">
-          <h1>{t.app.workbenchTitle}</h1>
-          <span className="pdf-studio-sep" aria-hidden="true" />
-          <span className="pdf-mode-badge">{target.label}</span>
-          <p className="pdf-mode-summary">{t.app.workbenchSummary}</p>
+      <section className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1.5 pt-3.5 pb-3 max-md:pt-3 max-md:pb-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h1 className="m-0 text-[17px] max-md:text-base leading-snug font-semibold tracking-[-0.02em] whitespace-nowrap text-ink">
+            {t.app.workbenchTitle}
+          </h1>
+          <span className="h-3.5 w-px shrink-0 bg-control-line" aria-hidden="true" />
+          <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-accent">
+            {target.label}
+          </span>
+          <p className="m-0 truncate text-xs text-muted">
+            {t.app.workbenchSummary}
+          </p>
         </div>
-        <span className="pdf-status-pill"><LockKeyhole size={12} />{temporaryReason ? t.app.pillTemp : items.length ? t.app.pillQueue.replace('{0}', String(items.length)).replace('{1}', String(done.length)) : t.app.pillOffline}</span>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 py-1 max-md:px-2.5 max-md:py-0.5 text-[11.5px] max-md:text-[11px] font-medium whitespace-nowrap text-muted tabular-nums">
+          <LockKeyhole size={12} />
+          {temporaryReason ? t.app.pillTemp : items.length ? t.app.pillQueue.replace('{0}', String(items.length)).replace('{1}', String(done.length)) : t.app.pillOffline}
+        </span>
       </section>
-      {temporaryReason && <div className="workspace-session-notice" role="status" aria-label="工作区保存方式"><CircleHelp size={17} /><div><strong>{t.app.tempNoticeTitle}</strong><p>{temporaryReason} {t.app.tempNoticeDesc}</p></div></div>}
-      {(saving || (!busy && (resumable || items.some((item) => item.status === 'error')))) && <div className="task-controls" aria-label="任务保存与恢复">
-        {saving && <span role="status">{persistent ? t.app.saving : t.app.updating}</span>}
-        {!busy && resumable && <button disabled={locked || !ready} onClick={() => void run('all')}>{t.app.reconvertAll}</button>}
-        {!busy && items.some((item) => item.status === 'error') && <button disabled={locked || !ready} onClick={() => void run('retry')}>{t.app.retryFailed}</button>}
-      </div>}
+      {temporaryReason && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-surface px-4 py-3 text-xs leading-6 text-muted" role="status" aria-label="工作区保存方式">
+          <CircleHelp size={17} className="mt-1 shrink-0" />
+          <div>
+            <strong className="font-semibold text-ink">{t.app.tempNoticeTitle}</strong>
+            <p className="mt-0.5">{temporaryReason} {t.app.tempNoticeDesc}</p>
+          </div>
+        </div>
+      )}
+      {(saving || (!busy && (resumable || items.some((item) => item.status === 'error')))) && (
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line/80 bg-panel px-4 py-2.5 text-xs text-muted shadow-[var(--shadow-card)]" aria-label="任务保存与恢复">
+          {saving && <span role="status">{persistent ? t.app.saving : t.app.updating}</span>}
+          {!busy && resumable && (
+            <button className="rounded-lg bg-surface px-3 py-1.5 font-medium text-ink hover:bg-accent-soft hover:text-accent transition-colors" disabled={locked || !ready} onClick={() => void run('all')}>
+              {t.app.reconvertAll}
+            </button>
+          )}
+          {!busy && items.some((item) => item.status === 'error') && (
+            <button className="rounded-lg bg-surface px-3 py-1.5 font-medium text-ink hover:bg-accent-soft hover:text-accent transition-colors" disabled={locked || !ready} onClick={() => void run('retry')}>
+              {t.app.retryFailed}
+            </button>
+          )}
+        </div>
+      )}
       <section className="workspace">
         <div className="workspace-main">
           <div className="panel-heading"><h2><FolderOpen size={17} />{t.app.yourImages}<span className="count">{items.length.toString().padStart(2, '0')}</span></h2><div className="toolbar">{!!items.length && <button disabled={busy || zipping || locked} onClick={() => void clearItems()}><Trash2 size={14} />{t.app.clear}</button>}<button disabled={busy || locked} onClick={() => inputRef.current?.click()}><Plus size={16} />{t.app.addImages}</button></div></div>
