@@ -434,14 +434,23 @@ export function PdfApp() {
   return <div className="app-shell pdf-app">
     <SiteHeader active="pdf" onHelp={() => document.getElementById('pdf-guide')?.scrollIntoView({ behavior: 'smooth' })} />
     <main>
-      <section className="pdf-studio-bar">
-        <div className="pdf-studio-title">
-          <h1>{wb.title}</h1>
-          <span className="pdf-studio-sep" aria-hidden="true" />
-          <span className="pdf-mode-badge">{selectedMode.label}</span>
-          <p className="pdf-mode-summary">{selectedMode.detail}</p>
+      <section className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1.5 pt-3.5 pb-3 max-md:pt-3 max-md:pb-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h1 className="m-0 text-[17px] max-md:text-base leading-snug font-semibold tracking-[-0.02em] whitespace-nowrap text-ink">
+            {wb.title}
+          </h1>
+          <span className="h-3.5 w-px shrink-0 bg-control-line" aria-hidden="true" />
+          <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-accent">
+            {selectedMode.label}
+          </span>
+          <p className="m-0 truncate text-xs text-muted">
+            {selectedMode.detail}
+          </p>
         </div>
-        <span className="pdf-status-pill"><LockKeyhole size={12} />{pages.length ? wb.statusPill.replace('{0}', String(activeSources.length)).replace('{1}', String(pages.length)) : wb.statusOffline}</span>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 py-1 max-md:px-2.5 max-md:py-0.5 text-[11.5px] max-md:text-[11px] font-medium whitespace-nowrap text-muted tabular-nums">
+          <LockKeyhole size={12} />
+          {pages.length ? wb.statusPill.replace('{0}', String(activeSources.length)).replace('{1}', String(pages.length)) : wb.statusOffline}
+        </span>
       </section>
       <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden aria-label={wb.importInputAria} onChange={event => { void importFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
       <div className={`workspace pdf-workspace${dragging ? ' pdf-drop-active' : ''}`} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDragging(true); } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }} onDrop={event => { if (event.dataTransfer.files.length) { event.preventDefault(); setDragging(false); void importFiles(Array.from(event.dataTransfer.files)); } }}>
