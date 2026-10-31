@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STACK_DIR=/opt/stacks/folioforge
 NEW_TAG=${1:-}
-if [[ $# -ne 1 || ! "$NEW_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
+PRODUCT=${2:-pdf}
+case "$PRODUCT" in
+    pdf) STACK_DIR=/opt/stacks/folioforge IMAGE=folioforge PORT=18085 ;;
+    image) STACK_DIR=/opt/stacks/pixelforge IMAGE=pixelforge PORT=18087 ;;
+    *) echo "Unknown product." >&2; exit 2 ;;
+esac
+if [[ $# -lt 1 || $# -gt 2 || ! "$NEW_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
     echo "Invalid image tag." >&2
     exit 2
 fi
 test -f "$STACK_DIR/compose.yaml"
-exec 9>/run/lock/folioforge-deploy.lock
+exec 9>"/run/lock/$IMAGE-deploy.lock"
 flock -n 9 || { echo "Another FolioForge deployment is running." >&2; exit 3; }
 cd "$STACK_DIR"
 
@@ -19,7 +24,7 @@ fi
 
 # Only import an image stream. Release input cannot replace host scripts/config.
 gzip -dc | docker load
-REVISION=$(docker image inspect "folioforge:$NEW_TAG" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
+REVISION=$(docker image inspect "$IMAGE:$NEW_TAG" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
 [[ "$REVISION" = "${NEW_TAG#sha-}" ]] || { echo "Image revision mismatch." >&2; exit 2; }
 if [[ "$NEW_TAG" = "$PREVIOUS_TAG" ]]; then
     echo "Release tag is already active; use a new commit for a new deployment." >&2; exit 2
@@ -33,8 +38,8 @@ write_tag() {
 healthy() {
     local expected=$1 attempt
     for ((attempt=0; attempt<20; attempt++)); do
-        if curl --fail --silent --max-time 3 http://127.0.0.1:18085/healthz >/dev/null \
-            && [[ "$(curl --fail --silent --max-time 3 http://127.0.0.1:18085/release.txt)" = "${expected#sha-}" ]]; then
+        if curl --fail --silent --max-time 3 http://127.0.0.1:$PORT/healthz >/dev/null \
+            && [[ "$(curl --fail --silent --max-time 3 http://127.0.0.1:$PORT/release.txt)" = "${expected#sha-}" ]]; then
             return 0
         fi
         sleep 2

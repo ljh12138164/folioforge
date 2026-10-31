@@ -1,6 +1,6 @@
 # FolioForge 上线流程
 
-> CI 与自动部署保持暂停，工作流保留在 `.github/workflows/web-deploy.yml.disabled`。当前通过 Workbench 手动发布两套独立容器，实际配置与发布验证记录见 [域名切换与上线记录](PRODUCTION-DOMAINS.md)。下文 Actions 流程仅供恢复自动部署时参考；恢复前需要补齐图片站的发布流程。两个应用的部署边界见 [架构说明](ARCHITECTURE.md)。
+> CI 与自动部署已恢复（`.github/workflows/web-deploy.yml`；桌面工作流仍暂停）。main 提交通过验证后，由 Actions 依次发布 PDF 站（`folioforge`，回环端口 18085）和图片站（`pixelforge`，回环端口 18087）。首次切换前，管理员必须按下文「升级服务器发布脚本」重新安装脚本与 SSH gate，否则图片站发布步骤会被旧 gate 拒绝。实际配置与历史发布记录见 [域名切换与上线记录](PRODUCTION-DOMAINS.md)；两个应用的部署边界见 [架构说明](ARCHITECTURE.md)。
 
 正式地址：`https://pdf.ljhboard.cn`。参考本机 `D:/code/tool`、`D:/code/site` 和 `D:/code/nextra-blog` 的 CI / Docker / 受限 SSH 流程，适配本项目的 Next 静态导出、Rust WASM、OCR 资源和 PDF 离线更新。
 
@@ -13,7 +13,7 @@
 5. 服务器只操作 `/opt/stacks/folioforge` 的独立 Compose 项目，检查容器健康与 `/release.txt` 提交号；失败恢复之前的镜像标签。首次发布失败则停止失败服务。
 6. Action 检查正式 HTTPS 地址的页面、资源与提交号。若容器健康但公网检查失败，Action 报错，需要检查 DNS、TLS 或 CDN；不把外部路由错误当成容器失败自动反复切换。
 
-两套工作流均已停用并保留配置；恢复后 `Desktop compatibility` 用于 Electron 跨平台验证，Web 流程用于 Web 上线。
+桌面工作流仍为 `desktop.yml.disabled`。部署任务依次导入并验证 `folioforge` 与 `pixelforge` 两个镜像，最后检查 `https://pdf.ljhboard.cn` 与 `https://img.ljhboard.cn` 的提交号。
 
 ## 首次服务器准备
 
@@ -44,6 +44,17 @@ restrict,command="/usr/local/bin/folioforge-deploy-gate" ssh-ed25519 <项目专�
 
 CDN 不应对 HTML、`/pdf-sw.js`、`/release.txt` 强制覆盖源站缓存规则，也不要将不存在的资源回退为 HTTP 200 首页。Umami 沿用客户端直连 `analytics.ljhboard.cn`，无需新增统计反向代理。
 
+## 升级服务器发布脚本（恢复 CI 前一次性操作）
+
+发布脚本现在接收 `deploy sha-<SHA> [image]`：省略产品参数发布 PDF 站（`/opt/stacks/folioforge`），`image` 发布图片站（`/opt/stacks/pixelforge`，使用 `compose.image.yaml` 安装的 `compose.yaml`，端口 18087）。两个站点使用各自的锁文件。由管理员从审核后的仓库副本重新安装；sudoers 现有规则 `sha-*` 已覆盖附加的 `image` 参数：
+
+```bash
+sudo install -m 755 deploy/server/deploy-folioforge /usr/local/sbin/deploy-folioforge
+sudo install -m 755 deploy/server/folioforge-deploy-gate /usr/local/bin/folioforge-deploy-gate
+sudo test -f /opt/stacks/pixelforge/compose.yaml
+```n
+不需要新增 SSH 密钥或用户；确认 `/opt/stacks/pixelforge/.env` 中的 `IMAGE_TAG` 为 `sha-<40位SHA>` 格式（当前手动发布使用的就是该格式）。
+
 ## GitHub 配置
 
 仓库为 `ljh12138164/folioforge`，默认分支为 `main`。创建 `production` Environment，限制部署分支为 main。先设置下列配置，再打开发布开关。
@@ -59,7 +70,7 @@ CDN 不应对 HTML、`/pdf-sw.js`、`/release.txt` 强制覆盖源站缓存规�
 
 不关闭主机密钥检查，不使用其他项目的私钥副本，不把私钥放进仓库。各应用的公开域名与 Umami ID 分别在应用内提供默认值，可通过对应应用目录的 `.env.local` 或构建环境覆盖；两个应用分别使用自己的 Umami ID。修改配置需要新的构建。公开预览构建应使用 `NEXT_PUBLIC_SITE_INDEXABLE=false`，本 production 流程固定为 true。新域名配置和当前准备情况见 [域名切换准备](PRODUCTION-DOMAINS.md)。
 
-当前合入 main 不会运行已停用的工作流。将来恢复时，main 提交才会触发验证和条件发布；开启仓库变量本身不会发布内容。相同 SHA 已经部署时会拒绝覆盖已有标签，需要发布新提交。
+main 提交会触发验证；只有 `ENABLE_PRODUCTION_DEPLOY=true` 时才发布。相同 SHA 已经部署时会拒绝覆盖已有标签，需要发布新提交。
 
 ## 本地验证与镜像
 

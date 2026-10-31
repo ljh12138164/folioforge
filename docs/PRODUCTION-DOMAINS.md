@@ -1,6 +1,6 @@
 # 独立站点上线与 Umami 配置
 
-2026-10-27（北京时间）：两套独立 Web 应用已上线。Electron 和 CI 保持暂停，合并 PR 不会触发已停用的工作流。
+2026-10-27（北京时间）：两套独立 Web 应用已上线。Electron 保持暂停；Web CI/CD 已于 2026-11-01 恢复，合并到 main 会触发验证与发布。
 
 | 项目 | PDF | 图片 |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ node scripts/verify-deployment.mjs https://img.ljhboard.cn 1590c56ecf189eb2fab6f
 5. 分别运行公网验证：`node scripts/verify-deployment.mjs https://pdf.ljhboard.cn <SHA> pdf` 与 `node scripts/verify-deployment.mjs https://img.ljhboard.cn <SHA> image`，确认页面、资源、canonical、重定向与提交号。
 6. 浏览器核对两个站点分别加载正确 Website ID，并到 Umami 确认访问数据。需要保留旧链接时，再单独安排旧域名 `/convert/`、`/images/` 到图片站点、其余路径到 PDF 站点的跳转，保留查询参数。
 
-两个 `.yml.disabled` 工作流保持禁用。旧聚合域名已按 `deploy/host-nginx.legacy.conf.example` 保留路径和查询参数：`/convert`、`/images` 前往图片站，其余路径前往 PDF 站。
+桌面工作流 `desktop.yml.disabled` 保持禁用。旧聚合域名已按 `deploy/host-nginx.legacy.conf.example` 保留路径和查询参数：`/convert`、`/images` 前往图片站，其余路径前往 PDF 站。
 
 ## 回滚本次 PDF 替换
 
