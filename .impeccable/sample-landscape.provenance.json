@@ -1,6 +1,12 @@
 {
-  "generator": "built-in image_gen",
-  "prompt": "Create a pristine high-resolution wide panoramic landscape photograph to serve as the actual sample image in the approved PixelForge homepage design. Reference image is a website design comp: use ONLY its mountain-lake photograph as visual inspiration. Deliver the landscape itself filling the entire frame, NO website, UI, type, labels, dividers, cards, buttons or borders. A serene alpine lake reflecting a rugged light-gray snowy mountain range, deep green conifer forests across the middle and along both banks, clear soft blue sky with a few natural white clouds, morning sunlight from the right. Natural photographic color, fine foliage detail for testing image compression, believable rock textures, level horizon, panoramic composition about 3:1. Do not create a before/after split, filters, photographic montage or watermark. This is one continuous consistent landscape photograph.",
-  "reference": ".impeccable/mocks/home-a.png",
-  "role": "synthetic sample image; not product evidence"
+  "source": "Unsplash",
+  "photographer": "Bailey Zindel",
+  "subject": "Panoramic alpine lake and mountain reflection, Yosemite Valley",
+  "photo_id": "1506744038136-46273834b3fb",
+  "url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
+  "license": "Unsplash License (Free commercial & personal use)",
+  "dimensions": "1080x360",
+  "file_size": "758 KB",
+  "crop": "Panoramic 3:1 crop from authentic raw photograph",
+  "role": "authentic landscape photograph sample; real camera capture, lightweight web asset"
 }

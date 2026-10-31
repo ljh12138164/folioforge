@@ -104,9 +104,9 @@ export function Home({ active = 'home' }: { active?: 'home' | 'images' }) {
 
       <section className="home-demo" aria-label="图片转换示例">
         <div className="home-picture">
-          <img src={result?.before ?? '/sample-landscape.png'} alt="山林与湖泊的示例图片" width={2172} height={724} fetchPriority="high" />
+          <img src={result?.before ?? '/sample-landscape.png'} alt="山林与湖泊的真实摄影示例图片" width={1080} height={360} fetchPriority="high" />
           {result && <img src={result.after} alt="示例图片的实际转换结果" style={{ clipPath: `inset(0 0 0 ${split}%)` }} />}
-          <span className="compare-label label-before">{result ? '原图 · PNG 2.83 MB' : '示例图片 · 2172 × 724'}</span>
+          <span className="compare-label label-before">{result ? '原图 · PNG 758 KB' : '真实实拍 · 1080 × 360'}</span>
           <span className="compare-label label-after">{result ? `转换结果 · ${result.label}` : '点击「试用示例」查看实时效果'}</span>
           <div className="compare-divider" style={{ left: `${split}%` }}>
             <span><MoveHorizontal size={16} /></span>
