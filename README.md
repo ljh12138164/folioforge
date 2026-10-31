@@ -144,7 +144,7 @@ PDF 默认正式地址为 `https://pdf.ljhboard.cn`，图片为 `https://img.ljh
 
 已本地安装并使用 [impeccable](https://github.com/pbakaus/impeccable)。先展示三个首页效果图及工作台效果图，用户选择 A「全幅转换对比」，再展示可点击页面并接入正式路由和 Electron。中文文案使用本地 humanizer-zh 技能润色。
 
-效果图、选择记录、素材来源和实际页面截图位于 `.impeccable/`。自动设计引擎下载失败，本轮未执行其自动测量门禁，不能将人工截图复核视为自动审计通过。首页山景为 AI 生成的示例素材，生成记录见 `.impeccable/sample-landscape.provenance.json`。
+效果图、选择记录、素材来源和实际页面截图位于 `.impeccable/`。自动设计引擎下载失败，本轮未执行其自动测量门禁，不能将人工截图复核视为自动审计通过。首页山景为真实摄影素材（优胜美地高山湖泊倒影实拍），来源记录见 `.impeccable/sample-landscape.provenance.json`，非 AI 生成。
 
 ImageMagick WASM 的 LICENSE 和 NOTICE 随静态资源及桌面包保留于 `web/licenses/magick-wasm/`（网页源码对应 `apps/image-web/public/licenses/magick-wasm/`）。Electron 自带的许可证文件保留在便携目录中。
 

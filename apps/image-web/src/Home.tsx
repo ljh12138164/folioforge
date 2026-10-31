@@ -106,7 +106,7 @@ export function Home({ active = 'home' }: { active?: 'home' | 'images' }) {
 
       <section className="home-demo" aria-label="图片转换示例">
         <div className="home-picture">
-          <img src={result?.before ?? '/sample-landscape.png'} alt={t.home.samplePicAlt} width={2172} height={724} fetchPriority="high" />
+          <img src={result?.before ?? '/sample-landscape.png'} alt={t.home.samplePicAlt} width={1080} height={360} fetchPriority="high" />
           {result && <img src={result.after} alt={t.home.sampleResultAlt} style={{ clipPath: `inset(0 0 0 ${split}%)` }} />}
           <span className="compare-label label-before">{result ? t.home.compareOriginal : t.home.sampleOriginal}</span>
           <span className="compare-label label-after">{result ? `${t.home.compareResultPrefix}${result.label}` : t.home.clickTrySample}</span>
