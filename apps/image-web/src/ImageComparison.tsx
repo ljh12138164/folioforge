@@ -1,13 +1,17 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ArrowDownToLine, ArrowLeftRight, Expand, LoaderCircle, Minimize2, Minus, Plus, Scan } from 'lucide-react';
 import type { TaskOutput } from './task-store';
+import { useImageI18n } from './i18n';
 
 type Result = TaskOutput & { url: string; before: string; after: string };
 const size = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(2)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
 const clamp = (value: number, limit: number) => Math.max(-limit, Math.min(limit, value));
 
 export function ImageComparison({ source, file, result, targetFormat, working, previewError }: { source: string; file: File; result?: Result; targetFormat: string; working: boolean; previewError?: string }) {
+  const { t } = useImageI18n();
   const root = useRef<HTMLDivElement>(null), stage = useRef<HTMLDivElement>(null);
   const gesture = useRef<{ pointer: number; element: HTMLElement; mode: 'pan' | 'split'; x: number; y: number; panX: number; panY: number } | null>(null);
   const [frame, setFrame] = useState({ width: 1, height: 1 });
@@ -82,47 +86,47 @@ export function ImageComparison({ source, file, result, targetFormat, working, p
     setBefore(result.before); setAfter(result.after); setFallback(true);
   };
 
-  return <section ref={root} className="image-comparison" aria-label="图片转换前后对照">
+  return <section ref={root} className="image-comparison" aria-label={t.compare.title}>
     <div className="image-compare-toolbar">
-      <strong><ArrowLeftRight size={15} />原图与结果对照</strong>
-      <div className="image-zoom-controls" role="group" aria-label="对照缩放">
-        <button aria-label="缩小对照" disabled={scale <= .05} onClick={() => change(scale / 1.5)}><Minus size={15} /></button>
-        <output aria-label="对照缩放比例">{Math.round(scale * 100)}%</output>
-        <button aria-label="放大对照" disabled={scale >= 8} onClick={() => change(scale * 1.5)}><Plus size={15} /></button>
+      <strong><ArrowLeftRight size={15} />{t.compare.title}</strong>
+      <div className="image-zoom-controls" role="group" aria-label={t.compare.zoomGroup}>
+        <button aria-label={t.compare.zoomOut} disabled={scale <= .05} onClick={() => change(scale / 1.5)}><Minus size={15} /></button>
+        <output aria-label={t.compare.zoomRatio}>{Math.round(scale * 100)}%</output>
+        <button aria-label={t.compare.zoomIn} disabled={scale >= 8} onClick={() => change(scale * 1.5)}><Plus size={15} /></button>
         <button aria-pressed={zoom === 1} onClick={() => change(1)}>100%</button>
-        <button aria-pressed={zoom === 'fit'} onClick={() => change('fit')}><Scan size={14} />适应</button>
-        {canFullscreen && <button aria-label={fullscreen ? '退出全屏对照' : '全屏对照'} onClick={() => {
-          void (fullscreen ? document.exitFullscreen() : root.current!.requestFullscreen()).catch(() => setError('全屏不可用，可继续在工作台中缩放对照。'));
+        <button aria-pressed={zoom === 'fit'} onClick={() => change('fit')}><Scan size={14} />{t.compare.fit}</button>
+        {canFullscreen && <button aria-label={fullscreen ? t.compare.exitFullscreen : t.compare.enterFullscreen} onClick={() => {
+          void (fullscreen ? document.exitFullscreen() : root.current!.requestFullscreen()).catch(() => setError(t.compare.fullscreenUnavailable));
         }}>{fullscreen ? <Minimize2 size={15} /> : <Expand size={15} />}</button>}
       </div>
     </div>
     <div ref={stage} className={`image-compare-stage checkerboard${dragging ? ' is-dragging' : ''}`} onPointerDown={event => start(event, 'pan')} {...handlers}>
       <div className="image-compare-layer" style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}>
-        <img src={before} alt="转换前的原图" draggable={false} style={imageStyle} onLoad={event => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} onError={() => {
-          if (before === result?.before) setError('原图预览不可用，请尝试重新转换。');
+        <img src={before} alt={t.compare.originalAlt} draggable={false} style={imageStyle} onLoad={event => setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} onError={() => {
+          if (before === result?.before) setError(t.compare.previewUnavailable);
           else compatibilityPreview();
         }} />
       </div>
       <div className="image-compare-layer" style={{ clipPath: `inset(0 0 0 ${split}%)` }}>
-        {result && <img src={after} alt="实际转换结果" draggable={false} style={imageStyle} onError={() => {
-          if (after === result.after) setError('结果预览不可用，仍可下载转换后的文件。');
+        {result && <img src={after} alt={t.compare.resultAlt} draggable={false} style={imageStyle} onError={() => {
+          if (after === result.after) setError(t.compare.resultUnavailable);
           else compatibilityPreview();
         }} />}
       </div>
-      {!result && <div className="image-compare-pending" style={{ width: `${100 - split}%` }} role="status">{working && <LoaderCircle size={20} className="spin" />}<span>{previewError ? '预览未完成' : '正在生成转换预览…'}</span></div>}
-      <span className="image-side-label image-side-before">原图 · {originalFormat}</span><span className="image-side-label image-side-after">{result?.format ?? targetFormat} · 转换后</span>
-      <div className="image-compare-handle" role="slider" tabIndex={0} aria-label="拖动以对比转换前后图片" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(split)} aria-valuetext={`原图 ${Math.round(split)}%，结果 ${Math.round(100 - split)}%`} style={{ left: `${split}%` }} onPointerDown={event => start(event, 'split')} {...handlers} onKeyDown={event => {
+      {!result && <div className="image-compare-pending" style={{ width: `${100 - split}%` }} role="status">{working && <LoaderCircle size={20} className="spin" />}<span>{previewError ? t.compare.previewIncomplete : t.compare.generatingPreview}</span></div>}
+      <span className="image-side-label image-side-before">{t.compare.originalTag}{originalFormat}</span><span className="image-side-label image-side-after">{result?.format ?? targetFormat}{t.compare.convertedTag}</span>
+      <div className="image-compare-handle" role="slider" tabIndex={0} aria-label={t.compare.dragSliderAria} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(split)} aria-valuetext={t.compare.originalValText.replace('{0}', String(Math.round(split))).replace('{1}', String(Math.round(100 - split)))} style={{ left: `${split}%` }} onPointerDown={event => start(event, 'split')} {...handlers} onKeyDown={event => {
         const value = event.key === 'Home' ? 0 : event.key === 'End' ? 100 : ['ArrowLeft', 'ArrowDown'].includes(event.key) ? split - (event.shiftKey ? 10 : 1) : ['ArrowRight', 'ArrowUp'].includes(event.key) ? split + (event.shiftKey ? 10 : 1) : undefined;
         if (value !== undefined) { event.preventDefault(); setSplit(Math.max(0, Math.min(100, value))); }
       }}><span><ArrowLeftRight size={17} /></span></div>
     </div>
     <div className="image-compare-sizes">
-      <div><span>原图 · {originalFormat}</span><strong>{size(file.size)}</strong><small>{natural.width > 1 ? `${result?.originalWidth ?? natural.width} × ${result?.originalHeight ?? natural.height}` : '读取尺寸中'}</small></div>
-      {result ? <span className={`image-size-change${difference < 0 ? ' larger' : ''}`}>{difference >= 0 ? `减少 ${difference.toFixed(1)}%` : `增大 ${Math.abs(difference).toFixed(1)}%`}</span> : <span>{previewError ? '预览失败' : '编码中'}</span>}
-      <div><span>转换后 · {result?.format ?? targetFormat}</span><strong>{result ? size(result.size) : '—'}</strong><small>{result ? `${result.width} × ${result.height}` : '等待实际编码结果'}</small></div>
+      <div><span>{t.compare.originalTag}{originalFormat}</span><strong>{size(file.size)}</strong><small>{natural.width > 1 ? `${result?.originalWidth ?? natural.width} × ${result?.originalHeight ?? natural.height}` : t.compare.readingDimensions}</small></div>
+      {result ? <span className={`image-size-change${difference < 0 ? ' larger' : ''}`}>{difference >= 0 ? t.compare.sizeReduced.replace('{0}', difference.toFixed(1)) : t.compare.sizeIncreased.replace('{0}', Math.abs(difference).toFixed(1))}</span> : <span>{previewError ? t.compare.previewFailed : t.compare.encoding}</span>}
+      <div><span>{t.compare.convertedFormat}{result?.format ?? targetFormat}</span><strong>{result ? size(result.size) : '—'}</strong><small>{result ? `${result.width} × ${result.height}` : t.compare.waitingResult}</small></div>
     </div>
-    {result && <div className="image-compare-download"><span>当前图片 · {file.name}</span><a href={result.url} download={result.name}><ArrowDownToLine size={14} />下载 {result.format}</a></div>}
-    <p className="image-compare-hint">拖动分界线对照，拖动画面平移；Ctrl / ⌘ + 滚轮缩放。{fallback ? '当前格式使用引擎缩略预览，100% 按预览像素显示，不代表原图像素细节。' : '100% 按原图像素显示，缩小后的结果对齐放大。'}修改设置后自动更新当前图片预览。</p>
+    {result && <div className="image-compare-download"><span>{t.compare.currentImage}{file.name}</span><a href={result.url} download={result.name}><ArrowDownToLine size={14} />{t.compare.downloadFormat}{result.format}</a></div>}
+    <p className="image-compare-hint">{t.compare.hintBase.replace('{0}', fallback ? t.compare.hintFallback : t.compare.hintPixel)}</p>
     {(previewError || error) && <p className="image-compare-error" role="alert">{previewError || error}</p>}
   </section>;
 }

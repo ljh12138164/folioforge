@@ -14,13 +14,13 @@ import { openTaskStore } from './task-store';
 import type { Task, TaskOutput } from './task-store';
 import { concurrencyFor, needsExclusive, runQueue } from './task-runner';
 import { ImageComparison } from './ImageComparison';
+import { useImageI18n } from './i18n';
 
 type Output = TaskOutput & { url: string; before: string; after: string };
 type Item = Omit<Task, 'output'> & { sourceUrl: string; output?: Output };
 const initialOptions: ConvertOptions = { format: 'WEBP', quality: 82, stripMetadata: true, background: '#ffffff' };
 const accept = formats.map((format) => `.${format.extension}`).concat('.jpeg', '.heif', '.tif').join(',');
 const size = (bytes: number) => bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(2)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
-const statusNames = { waiting: '等待转换', working: '转换中', paused: '已暂停', interrupted: '已中断', done: '已完成', error: '未完成', cancelled: '已取消' };
 
 function stored(item: Item): Task {
   const { sourceUrl, output, ...task } = item;
@@ -39,6 +39,7 @@ function save(url: string, name: string) {
 function newEngine() { return createEngine(new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' })); }
 
 export function App() {
+  const { t } = useImageI18n();
   const [items, setItems] = useState<Item[]>([]);
   const [selected, setSelected] = useState<string>();
   const [options, setOptions] = useState(initialOptions);
@@ -83,6 +84,7 @@ export function App() {
   const currentOutput = active?.output && JSON.stringify(active.options) === JSON.stringify(options) ? active.output : undefined;
   const comparison = currentOutput ?? (!busy && !locked && ready && preview?.key === previewKey ? preview.output : undefined);
   const comparisonError = preview?.key === previewKey ? preview.error : undefined;
+  const statusNames = t.app.statusNames;
 
   useEffect(() => {
     let active = true;
@@ -115,7 +117,6 @@ export function App() {
       }
       let workspace = sessionStorage.getItem('pixelforge-workspace');
       if (!workspace) {
-        // The first tab keeps access to tasks saved before tab isolation existed.
         workspace = localStorage.getItem('pixelforge-workspaces-enabled') ? crypto.randomUUID() : 'legacy';
         sessionStorage.setItem('pixelforge-workspace', workspace);
       }
@@ -123,7 +124,6 @@ export function App() {
       await navigator.locks.request(queueLock, { ifAvailable: true }, async (lock) => {
         if (!active) return;
         if (!lock) {
-          // Duplicated tabs can inherit sessionStorage; give the copy its own queue.
           sessionStorage.setItem('pixelforge-workspace', crypto.randomUUID());
           await initialize();
           return;
@@ -428,62 +428,89 @@ export function App() {
     <SiteHeader active="convert" onFormats={() => setModal('formats')} onHelp={() => setModal('help')} />
 
     <main>
-      <section className="pdf-studio-bar workspace-intro">
-        <div className="pdf-studio-title">
-          <h1>图片转换工作台</h1>
-          <span className="pdf-studio-sep" aria-hidden="true" />
-          <span className="pdf-mode-badge">{target.label}</span>
-          <p className="pdf-mode-summary">批量导入图片，统一设置目标格式、编码质量与最大尺寸。</p>
+      <section className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1.5 pt-3.5 pb-3 max-md:pt-3 max-md:pb-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h1 className="m-0 text-[17px] max-md:text-base leading-snug font-semibold tracking-[-0.02em] whitespace-nowrap text-ink">
+            {t.app.workbenchTitle}
+          </h1>
+          <span className="h-3.5 w-px shrink-0 bg-control-line" aria-hidden="true" />
+          <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-accent">
+            {target.label}
+          </span>
+          <p className="m-0 truncate text-xs text-muted">
+            {t.app.workbenchSummary}
+          </p>
         </div>
-        <span className="pdf-status-pill"><LockKeyhole size={12} />{temporaryReason ? '临时工作区 · 关闭前请下载' : items.length ? `队列 ${items.length} 张 · 已完成 ${done.length} 张` : '本机编码 · 文件不上传'}</span>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 py-1 max-md:px-2.5 max-md:py-0.5 text-[11.5px] max-md:text-[11px] font-medium whitespace-nowrap text-muted tabular-nums">
+          <LockKeyhole size={12} />
+          {temporaryReason ? t.app.pillTemp : items.length ? t.app.pillQueue.replace('{0}', String(items.length)).replace('{1}', String(done.length)) : t.app.pillOffline}
+        </span>
       </section>
-      {temporaryReason && <div className="workspace-session-notice" role="status" aria-label="工作区保存方式"><CircleHelp size={17} /><div><strong>此窗口为临时工作区，关闭前请下载结果</strong><p>{temporaryReason} 当前窗口的图片和结果不会自动保存，刷新或关闭后将丢失。</p></div></div>}
-      {(saving || (!busy && (resumable || items.some((item) => item.status === 'error')))) && <div className="task-controls" aria-label="任务保存与恢复">
-        {saving && <span role="status">{persistent ? '正在保存…' : '正在更新…'}</span>}
-        {!busy && resumable && <button disabled={locked || !ready} onClick={() => void run('all')}>按当前设置重新转换全部</button>}
-        {!busy && items.some((item) => item.status === 'error') && <button disabled={locked || !ready} onClick={() => void run('retry')}>重试失败项</button>}
-      </div>}
+      {temporaryReason && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-surface px-4 py-3 text-xs leading-6 text-muted" role="status" aria-label="工作区保存方式">
+          <CircleHelp size={17} className="mt-1 shrink-0" />
+          <div>
+            <strong className="font-semibold text-ink">{t.app.tempNoticeTitle}</strong>
+            <p className="mt-0.5">{temporaryReason} {t.app.tempNoticeDesc}</p>
+          </div>
+        </div>
+      )}
+      {(saving || (!busy && (resumable || items.some((item) => item.status === 'error')))) && (
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line/80 bg-panel px-4 py-2.5 text-xs text-muted shadow-[var(--shadow-card)]" aria-label="任务保存与恢复">
+          {saving && <span role="status">{persistent ? t.app.saving : t.app.updating}</span>}
+          {!busy && resumable && (
+            <button className="rounded-lg bg-surface px-3 py-1.5 font-medium text-ink hover:bg-accent-soft hover:text-accent transition-colors" disabled={locked || !ready} onClick={() => void run('all')}>
+              {t.app.reconvertAll}
+            </button>
+          )}
+          {!busy && items.some((item) => item.status === 'error') && (
+            <button className="rounded-lg bg-surface px-3 py-1.5 font-medium text-ink hover:bg-accent-soft hover:text-accent transition-colors" disabled={locked || !ready} onClick={() => void run('retry')}>
+              {t.app.retryFailed}
+            </button>
+          )}
+        </div>
+      )}
       <section className="workspace">
         <div className="workspace-main">
-          <div className="panel-heading"><h2><FolderOpen size={17} />你的图片<span className="count">{items.length.toString().padStart(2, '0')}</span></h2><div className="toolbar">{!!items.length && <button disabled={busy || zipping || locked} onClick={() => void clearItems()}><Trash2 size={14} />清空</button>}<button disabled={busy || locked} onClick={() => inputRef.current?.click()}><Plus size={16} />添加图片</button></div></div>
+          <div className="panel-heading"><h2><FolderOpen size={17} />{t.app.yourImages}<span className="count">{items.length.toString().padStart(2, '0')}</span></h2><div className="toolbar">{!!items.length && <button disabled={busy || zipping || locked} onClick={() => void clearItems()}><Trash2 size={14} />{t.app.clear}</button>}<button disabled={busy || locked} onClick={() => inputRef.current?.click()}><Plus size={16} />{t.app.addImages}</button></div></div>
 
           {!items.length ? <div className={`dropzone ${dragging ? 'dragging' : ''}`}>
             <div className="import-icon" aria-hidden="true"><ImagePlus size={46} strokeWidth={1.2} /></div>
-            <h3>把图片拖到这里</h3><p>或者从设备中选择，一次可以添加多张</p><button className="primary import-button" disabled={locked} onClick={() => inputRef.current?.click()}><Upload size={17} />选择图片<ArrowUpRight size={16} /></button><div className="drop-hint">支持 JPG、PNG、WebP、AVIF、HEIC 等格式<span>单张最大 40 MB</span></div><div className="sample-line">手边没有图片？<button disabled={locked} onClick={loadSample}>试试这张示例<ArrowRight size={13} /></button></div>
+            <h3>{t.app.dropTitle}</h3><p>{t.app.dropSubtitle}</p><button className="primary import-button" disabled={locked} onClick={() => inputRef.current?.click()}><Upload size={17} />{t.app.chooseImages}<ArrowUpRight size={16} /></button><div className="drop-hint">{t.app.supportedFormatsHint}<span>{t.app.maxSizePerFile}</span></div><div className="sample-line">{t.app.noImagesHint}<button disabled={locked} onClick={loadSample}>{t.app.trySampleAction}<ArrowRight size={13} /></button></div>
           </div> : <>
             {active && <ImageComparison key={comparison?.url ?? previewKey} source={active.sourceUrl} file={active.file} result={comparison} targetFormat={target.label} working={!comparison && !comparisonError} previewError={comparisonError} />}
             <div className="file-list">{items.map((item, index) => <div key={item.id} className={`file-row ${active?.id === item.id ? 'selected' : ''}`}><button className="file-select" onClick={() => setSelected(item.id)} aria-label={`预览 ${item.file.name}`}><span className="file-number">{String(index + 1).padStart(2, '0')}</span><span className={`file-icon ${item.status === 'done' ? 'done' : ''}`}>{item.status === 'working' ? <LoaderCircle size={20} className="spin" /> : item.status === 'done' ? <Check size={20} /> : <FileImage size={20} />}</span><span className="file-info"><strong>{item.file.name}</strong><span>{size(item.file.size)}{item.output && <> <ArrowRight size={11} /> <b>{size(item.output.size)}</b> <span className="result-format">{item.output.format}</span></>}{item.error && <span className="file-error">{item.error}</span>}</span></span></button><span className={`status status-${item.status}`}>{statusNames[item.status]}</span>{item.output && <button className="icon-button" aria-label={`下载 ${item.output.name}`} onClick={() => save(item.output!.url, item.output!.name)}><ArrowDownToLine size={17} /></button>}<button className="icon-button remove" disabled={busy || zipping || locked} aria-label={`移除 ${item.file.name}`} onClick={() => removeItem(item)}><X size={16} /></button></div>)}</div>
-            <button className="add-more" disabled={busy || locked} onClick={() => inputRef.current?.click()}><Plus size={15} />继续添加，或直接拖入更多图片</button>
+            <button className="add-more" disabled={busy || locked} onClick={() => inputRef.current?.click()}><Plus size={15} />{t.app.continueAdd}</button>
           </>}
           <input ref={inputRef} className="sr-only" aria-label="选择图片文件" type="file" multiple accept={accept} disabled={busy || locked} onChange={(event) => { void addFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
-          <div className="workspace-bottom"><span>单张最大 40 MB · 4800 万像素</span><span>支持粘贴剪贴板图片 <kbd>Ctrl</kbd> + <kbd>V</kbd></span></div>
+          <div className="workspace-bottom"><span>{t.app.bottomLimit}</span><span>{t.app.bottomClipboard} <kbd>Ctrl</kbd> + <kbd>V</kbd></span></div>
         </div>
 
         <aside className="settings">
-          <div className="panel-heading"><h2><SlidersHorizontal size={17} />转换设置</h2><span className="settings-dot" /></div>
+          <div className="panel-heading"><h2><SlidersHorizontal size={17} />{t.app.settingsTitle}</h2><span className="settings-dot" /></div>
           <fieldset disabled={busy || zipping || locked}>
-            <div className="setting-section format-section"><div className="field-title"><label>目标格式</label>{writable.length > 8 && <button className="text-button" onClick={() => setAdvancedFormats(!advancedFormats)}>{advancedFormats ? '收起' : '更多格式'}<ChevronDown size={13} className={advancedFormats ? 'rotate' : ''} /></button>}</div><div className="format-grid">{(advancedFormats ? writable : writable.slice(0, 8)).map((format) => {
+            <div className="setting-section format-section"><div className="field-title"><label>{t.app.targetFormatLabel}</label>{writable.length > 8 && <button className="text-button" onClick={() => setAdvancedFormats(!advancedFormats)}>{advancedFormats ? t.app.lessFormats : t.app.moreFormats}<ChevronDown size={13} className={advancedFormats ? 'rotate' : ''} /></button>}</div><div className="format-grid">{(advancedFormats ? writable : writable.slice(0, 8)).map((format) => {
               return <button key={format.id} aria-pressed={options.format === format.id} title={format.description} className={`format-option ${options.format === format.id ? 'chosen' : ''}`} onClick={() => setOptions({ ...options, format: format.id })}>{format.label}{options.format === format.id && <Check size={12} />}</button>;
-            })}</div><div className="format-note">{target.description}{target.id === 'ICO' && ' · 最长边 256px'}{target.id === 'HEIC' && ' · 8 位静态图，始终移除元数据；大图编码较慢'}</div></div>
+            })}</div><div className="format-note">{target.description}{target.id === 'ICO' && t.app.icoNote}{target.id === 'HEIC' && t.app.heicNote}</div></div>
 
-            {options.format === 'SVG' ? <div className="setting-section"><div className="field-title" id="svg-preset-label">矢量描摹模式</div><div className="format-grid svg-preset-grid" role="group" aria-labelledby="svg-preset-label">{([{ id: 'poster', label: '彩色图标' }, { id: 'bw', label: '黑白线稿' }, { id: 'photo', label: '照片描摹' }] as const).map((preset) => <button key={preset.id} className={`format-option${(options.svgPreset ?? 'poster') === preset.id ? ' chosen' : ''}`} aria-pressed={(options.svgPreset ?? 'poster') === preset.id} onClick={() => setOptions({ ...options, svgPreset: preset.id })}>{preset.label}</button>)}</div><p className="field-help">生成可缩放的路径；照片为近似描摹，文字转为轮廓。最多 400 万像素。</p></div> : target.lossy && <div className="setting-section"><div className="field-title"><label htmlFor="quality">图片质量</label><output htmlFor="quality" className="quality-value">{target.lossy ? options.quality : '—'}<span>{target.lossy ? '%' : '无损 / 固定编码'}</span></output></div><input id="quality" className="quality-slider" type="range" min="1" max="100" value={options.quality} disabled={!target.lossy} onChange={(event) => setOptions({ ...options, quality: Number(event.target.value) })} style={{ '--range': `${options.quality}%` } as React.CSSProperties} /><div className="range-labels"><span>更小体积</span><span>更高画质</span></div></div>}
+            {options.format === 'SVG' ? <div className="setting-section"><div className="field-title" id="svg-preset-label">{t.app.svgPresetLabel}</div><div className="format-grid svg-preset-grid" role="group" aria-labelledby="svg-preset-label">{([{ id: 'poster', label: t.app.svgPresets.poster }, { id: 'bw', label: t.app.svgPresets.bw }, { id: 'photo', label: t.app.svgPresets.photo }] as const).map((preset) => <button key={preset.id} className={`format-option${(options.svgPreset ?? 'poster') === preset.id ? ' chosen' : ''}`} aria-pressed={(options.svgPreset ?? 'poster') === preset.id} onClick={() => setOptions({ ...options, svgPreset: preset.id })}>{preset.label}</button>)}</div><p className="field-help">{t.app.svgPresetHelp}</p></div> : target.lossy && <div className="setting-section"><div className="field-title"><label htmlFor="quality">{t.app.imageQuality}</label><output htmlFor="quality" className="quality-value">{target.lossy ? options.quality : '—'}<span>{target.lossy ? '%' : t.app.losslessFixed}</span></output></div><input id="quality" className="quality-slider" type="range" min="1" max="100" value={options.quality} disabled={!target.lossy} onChange={(event) => setOptions({ ...options, quality: Number(event.target.value) })} style={{ '--range': `${options.quality}%` } as React.CSSProperties} /><div className="range-labels"><span>{t.app.smallerSize}</span><span>{t.app.higherQuality}</span></div></div>}
 
-            <div className="setting-section"><div className="field-title"><label htmlFor="max-width">调整尺寸</label><span className="subtle"><Maximize2 size={11} />保持比例</span></div><div className="dimension-inputs"><div><input id="max-width" aria-label="最大宽度" type="number" min="1" max="16384" step="1" placeholder="原始宽度" value={options.maxWidth ?? ''} onChange={(event) => setOptions({ ...options, maxWidth: event.target.value ? Number(event.target.value) : undefined })} /><span>W</span></div><X size={12} /><div><input aria-label="最大高度" type="number" min="1" max="16384" step="1" placeholder="原始高度" value={options.maxHeight ?? ''} onChange={(event) => setOptions({ ...options, maxHeight: event.target.value ? Number(event.target.value) : undefined })} /><span>H</span></div></div><p className="field-help">留空保持原尺寸，只缩小、不放大</p></div>
+            <div className="setting-section"><div className="field-title"><label htmlFor="max-width">{t.app.resizeTitle}</label><span className="subtle"><Maximize2 size={11} />{t.app.keepAspect}</span></div><div className="dimension-inputs"><div><input id="max-width" aria-label={t.app.maxWidth} type="number" min="1" max="16384" step="1" placeholder={t.app.origWidth} value={options.maxWidth ?? ''} onChange={(event) => setOptions({ ...options, maxWidth: event.target.value ? Number(event.target.value) : undefined })} /><span>W</span></div><X size={12} /><div><input aria-label={t.app.maxHeight} type="number" min="1" max="16384" step="1" placeholder={t.app.origHeight} value={options.maxHeight ?? ''} onChange={(event) => setOptions({ ...options, maxHeight: event.target.value ? Number(event.target.value) : undefined })} /><span>H</span></div></div><p className="field-help">{t.app.resizeHelp}</p></div>
 
-            <div className="setting-section extra-settings">{options.format !== 'HEIC' && options.format !== 'SVG' && <label className="checkbox-row"><input type="checkbox" checked={options.stripMetadata} onChange={(event) => setOptions({ ...options, stripMetadata: event.target.checked })} /><span><strong>移除元数据</strong><small>也会移除 ICC 色彩配置</small></span><ShieldCheck size={16} /></label>}{(options.format === 'JPEG' || options.format === 'BMP' || options.format === 'HEIC' || options.format === 'SVG') && <label className="background-setting">透明区域填充颜色<input type="color" value={options.background} onChange={(event) => setOptions({ ...options, background: event.target.value })} /></label>}{options.format === 'SVG' && <p className="field-help">透明与半透明区域先合成到此背景色。</p>}</div>
+            <div className="setting-section extra-settings">{options.format !== 'HEIC' && options.format !== 'SVG' && <label className="checkbox-row"><input type="checkbox" checked={options.stripMetadata} onChange={(event) => setOptions({ ...options, stripMetadata: event.target.checked })} /><span><strong>{t.app.stripMetadata}</strong><small>{t.app.stripMetadataSub}</small></span><ShieldCheck size={16} /></label>}{(options.format === 'JPEG' || options.format === 'BMP' || options.format === 'HEIC' || options.format === 'SVG') && <label className="background-setting">{t.app.bgFill}<input type="color" value={options.background} onChange={(event) => setOptions({ ...options, background: event.target.value })} /></label>}{options.format === 'SVG' && <p className="field-help">{t.app.svgBgHelp}</p>}</div>
           </fieldset>
-          <div className="convert-actions"><button className="primary convert-button" disabled={!ready || !items.length || busy || zipping || locked} onClick={() => void run(resumable ? 'resume' : 'all')}>{busy ? <><LoaderCircle size={17} className="spin" />正在转换 {processed} / {processingTotal}</> : <><Zap size={17} />{resumable ? '继续未完成任务' : done.length ? '重新转换' : '转换全部图片'}<span>{items.length ? `${items.length} 张` : <ArrowRight size={17} />}</span></>}</button>{busy && <div className="toolbar task-run-controls"><button disabled={stopping} onClick={() => stop('pause')}><Pause size={14} />暂停</button><button disabled={control.current.mode === 'cancel'} onClick={() => stop('cancel')}><Square size={14} />取消剩余任务</button></div>}<p>{busy ? stopping ? '正在停止领取新任务；暂停会等待已开始的图片完成' : '最多同时处理 ' + parallelism + ' 张；大图单独处理' : resumable ? '继续时使用原任务设置，保留已完成结果' : ready ? `目标格式：${target.label}` : engineError ? '引擎加载失败' : '正在准备转换引擎…'}</p>{engineError && <div className="engine-error" role="alert">{engineError}<button onClick={() => setEngineVersion((version) => version + 1)}><RefreshCw size={12} />重新加载引擎</button></div>}</div>
+          <div className="convert-actions"><button className="primary convert-button" disabled={!ready || !items.length || busy || zipping || locked} onClick={() => void run(resumable ? 'resume' : 'all')}>{busy ? <><LoaderCircle size={17} className="spin" />{t.app.convertingProgress.replace('{0}', String(processed)).replace('{1}', String(processingTotal))}</> : <><Zap size={17} />{resumable ? t.app.resume : done.length ? t.app.reconvert : t.app.convertAll}<span>{items.length ? t.app.itemsCount.replace('{0}', String(items.length)) : <ArrowRight size={17} />}</span></>}</button>{busy && <div className="toolbar task-run-controls"><button disabled={stopping} onClick={() => stop('pause')}><Pause size={14} />{t.app.pause}</button><button disabled={control.current.mode === 'cancel'} onClick={() => stop('cancel')}><Square size={14} />{t.app.cancelRemaining}</button></div>}<p>{busy ? stopping ? t.app.stoppingHint : t.app.parallelHint.replace('{0}', String(parallelism)) : resumable ? t.app.resumeHint : ready ? t.app.targetFormatHint.replace('{0}', target.label) : engineError ? t.app.engineError : t.app.enginePreparing}</p>{engineError && <div className="engine-error" role="alert">{engineError}<button onClick={() => setEngineVersion((version) => version + 1)}><RefreshCw size={12} />{t.app.reloadEngine}</button></div>}</div>
         </aside>
       </section>
 
       {message && <div className="notice" role="alert"><CircleHelp size={16} /><span>{message}</span><button aria-label="关闭提示" onClick={() => setMessage('')}><X size={15} /></button></div>}
-      {!!done.length && <section className="download-bar"><span className="complete-icon"><CheckCheck size={21} /></span><div><strong>{done.length} 张图片已转换</strong><p>{size(originalTotal)} <ArrowRight size={12} /> {size(outputTotal)} <span>{outputTotal < originalTotal ? `节省 ${((1 - outputTotal / originalTotal) * 100).toFixed(1)}%` : '此设置下输出体积更大'}</span></p></div><button className="primary" disabled={busy || zipping || locked} onClick={downloadAll}>{zipping ? <LoaderCircle className="spin" size={16} /> : <ArrowDownToLine size={16} />}下载 ZIP</button></section>}
+      {!!done.length && <section className="download-bar"><span className="complete-icon"><CheckCheck size={21} /></span><div><strong>{t.app.doneBanner.replace('{0}', String(done.length))}</strong><p>{size(originalTotal)} <ArrowRight size={12} /> {size(outputTotal)} <span>{outputTotal < originalTotal ? t.app.savedPercent.replace('{0}', ((1 - outputTotal / originalTotal) * 100).toFixed(1)) : t.app.largerWarning}</span></p></div><button className="primary" disabled={busy || zipping || locked} onClick={downloadAll}>{zipping ? <LoaderCircle className="spin" size={16} /> : <ArrowDownToLine size={16} />}{t.app.downloadZip}</button></section>}
 
-      <div className="tool-note"><ShieldCheck size={16} /><p>仅处理静态图片。HEIC 支持导入与导出，HEIF 可导入；PSD 只保留合成图。</p><button onClick={() => setModal('formats')}>查看格式支持<ArrowUpRight size={13} /></button></div>
-      <footer><span>PixelForge</span><span className={`engine-status ${ready ? 'online' : ''}`}><span />{ready ? `引擎就绪 · ${writable.length} 种导出格式` : engineError ? '引擎需要重新加载' : '引擎准备中'}</span></footer>
+      <div className="tool-note"><ShieldCheck size={16} /><p>{t.app.staticOnlyTip}</p><button onClick={() => setModal('formats')}>{t.app.viewFormatSupport}<ArrowUpRight size={13} /></button></div>
+      <footer><span>PixelForge</span><span className={`engine-status ${ready ? 'online' : ''}`}><span />{ready ? t.app.engineOnline.replace('{0}', String(writable.length)) : engineError ? t.app.engineNeedsReload : t.app.enginePreparing}</span></footer>
     </main>
 
-    {modal && <section id="reference" className="reference-panel" aria-label={modal === 'formats' ? '格式支持' : '使用指南'}><div className="dialog-content"><div className="dialog-heading"><h2>{modal === 'formats' ? '格式支持' : '使用指南'}</h2><button className="icon-button" aria-label="收起说明" onClick={() => setModal(null)}><X size={20} /></button></div>{modal === 'formats' ? <><p className="dialog-description">导入与导出能力分别检测。SVG 导入由浏览器栅格化，导出由本地 WASM 描摹为路径。仅转换静态图像；PSD 只读取合成图。</p><div className="format-table"><div className="format-table-heading"><span>格式 / 用途</span><span>导入</span><span>导出</span></div>{formats.map((format) => { const ability = capabilities.find((item) => item.id === format.id); return <div key={format.id}><span><strong>{format.label}</strong><small>{format.description}</small></span><span className={ability?.read ? 'supported' : ''}>{ready ? ability?.read ? '支持' : '不支持' : '检测中'}</span><span className={ability?.write ? 'supported' : ''}>{ready ? ability?.write ? '支持' : '不支持' : '检测中'}</span></div>; })}</div><p className="field-help">图片工作台不支持 PDF 和相机 RAW。SVG 描摹最多 400 万像素，透明区域合成到所选背景色，不保留原 SVG 的文字与图层结构。EXR 等高动态范围格式的色深与色彩保真不在本版支持范围内。</p></> : <div className="guide"><article><span>01</span><div><h3>导入图片</h3><p>选择文件、拖入文件或直接粘贴剪贴板图片。单张图片不超过 40 MB、4800 万像素。</p></div></article><article><span>02</span><div><h3>设置格式与参数</h3><p>选择目标格式与编码质量；宽高用于限制最大边界，始终等比缩小。ICO 最长边为 256px；JPG、BMP 与 HEIC 的透明区域会填充所选背景色。</p></div></article><article><span>03</span><div><h3>对比预览并下载</h3><p>导入或修改参数后自动生成当前图片的转换预览，可拖动分割线对比画质，查看实际文件体积并直接下载。批量转换后可打包为 ZIP。</p></div></article><div className="guide-note"><LockKeyhole size={19} /><p>{temporaryReason ? "此窗口为临时工作区，图片与结果不会自动保存。请在刷新或关闭窗口前下载所需结果；清空仅移除此窗口的图片。" : "图片与转换结果会自动保存在此设备，刷新或重开页面可继续。清空任务会删除本地副本，清除网站数据也会删除任务。"}</p></div></div>}</div></section>}
-    {dragging && !busy && <div className="drag-overlay"><Upload size={42} /><strong>松开即可添加图片</strong><span>支持同时拖入多张图片</span></div>}
+    {modal && <section id="reference" className="reference-panel" aria-label={modal === 'formats' ? t.app.formatSupportTitle : t.app.userGuideTitle}><div className="dialog-content"><div className="dialog-heading"><h2>{modal === 'formats' ? t.app.formatSupportTitle : t.app.userGuideTitle}</h2><button className="icon-button" aria-label="收起说明" onClick={() => setModal(null)}><X size={20} /></button></div>{modal === 'formats' ? <><p className="dialog-description">{t.app.formatsIntro}</p><div className="format-table"><div className="format-table-heading"><span>{t.app.formatHeaderCol}</span><span>{t.app.importCol}</span><span>{t.app.exportCol}</span></div>{formats.map((format) => { const ability = capabilities.find((item) => item.id === format.id); return <div key={format.id}><span><strong>{format.label}</strong><small>{format.description}</small></span><span className={ability?.read ? 'supported' : ''}>{ready ? ability?.read ? t.app.supported : t.app.notSupported : t.app.detecting}</span><span className={ability?.write ? 'supported' : ''}>{ready ? ability?.write ? t.app.supported : t.app.notSupported : t.app.detecting}</span></div>; })}</div><p className="field-help">{t.app.formatsFooterHelp}</p></> : <div className="guide"><article><span>01</span><div><h3>{t.app.guideSteps.step1Title}</h3><p>{t.app.guideSteps.step1Desc}</p></div></article><article><span>02</span><div><h3>{t.app.guideSteps.step2Title}</h3><p>{t.app.guideSteps.step2Desc}</p></div></article><article><span>03</span><div><h3>{t.app.guideSteps.step3Title}</h3><p>{t.app.guideSteps.step3Desc}</p></div></article><div className="guide-note"><LockKeyhole size={19} /><p>{temporaryReason ? t.app.guideSessionNotice : t.app.guidePersistentNotice}</p></div></div>}</div></section>}
+    {dragging && !busy && <div className="drag-overlay"><Upload size={42} /><strong>{t.app.dragOverlayTitle}</strong><span>{t.app.dragOverlaySub}</span></div>}
   </div>;
 }

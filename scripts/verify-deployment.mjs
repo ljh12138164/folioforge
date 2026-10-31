@@ -9,9 +9,10 @@ const paths = product === 'pdf' ? ['/', '/pdf/', '/guide/'] : ['/', '/convert/',
 async function get(path, method = 'GET') {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await fetch(new URL(path, base), { method, redirect: 'manual', signal: AbortSignal.timeout(15000), headers: { 'Cache-Control': 'no-cache' } });
+      return await fetch(new URL(path, base), { method, redirect: 'manual', signal: AbortSignal.timeout(25000), headers: { 'Cache-Control': 'no-cache' } });
     } catch (error) {
-      if (attempt === 2) throw new Error(`Connection failed: ${path}`, { cause: error });
+      if (attempt >= 3) throw new Error(`Connection failed: ${path}`, { cause: error });
+      await new Promise(r => setTimeout(r, 800));
     }
   }
 }

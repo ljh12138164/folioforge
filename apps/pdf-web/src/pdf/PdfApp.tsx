@@ -7,6 +7,7 @@ import { isSortable, useSortable } from '@dnd-kit/react/sortable';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Check, CheckCheck, Columns2, Download, FilePlus2, FileSearch, FileStack, FileText, GripVertical, ImageDown, Layers, LayoutGrid, ListOrdered, LoaderCircle, LockKeyhole, Minimize2, PenTool, Plus, Redo2, RotateCw, ScanText, Scissors, Search, ShieldCheck, Stamp, Trash2, Undo2, Upload, X, ZoomIn } from 'lucide-react';
 import { zipSync } from 'fflate';
 import { SiteHeader } from '../SiteHeader';
+import { usePdfI18n } from '../i18n';
 import { MAX_FILE_BYTES, MAX_PAGES, MAX_TOTAL_BYTES, movePage, parsePageRange, safeFilename } from './core';
 import type { ImportedPdf, PdfPage, PdfSource } from './core';
 import { createPdfClient } from './client';
@@ -26,24 +27,28 @@ import { useOffline } from './use-offline';
 type Mode = 'organize' | 'extract' | 'split' | 'images' | 'numbers' | 'watermark' | 'layout' | 'text' | 'duplex' | 'blank' | 'stamp' | 'compare' | 'ocr' | 'compress';
 type History = { pages: PdfPage[]; past: PdfPage[][]; future: PdfPage[][] };
 type Renderer = ReturnType<typeof createPdfRenderer>;
-const modeGroups = ['页面整理', '版面印记', '识别与转换'] as const;
-const modes = [
-  { id: 'organize', group: '页面整理', label: '整理与合并', icon: Layers, detail: '拖拽调整页序、旋转或删除页面，可将多份 PDF 与图片合并为一份文档。' },
-  { id: 'extract', group: '页面整理', label: '提取页面', icon: FileStack, detail: '勾选或输入页码范围，将选中的页面导出为新 PDF。' },
-  { id: 'split', group: '页面整理', label: '拆分文档', icon: Scissors, detail: '将每页单独保存为一份 PDF，统一打包为 ZIP 下载。' },
-  { id: 'duplex', group: '页面整理', label: '双面重排', icon: ArrowUpDown, detail: '将分开扫描的正反面交错排回阅读顺序，确认新页序后再应用。' },
-  { id: 'blank', group: '页面整理', label: '空白页识别', icon: FileSearch, detail: '按墨迹比例筛选疑似空白页，逐页预览确认后再手动删除。' },
-  { id: 'numbers', group: '版面印记', label: '添加页码', icon: ListOrdered, detail: '按当前页序编号，先应用到页面预览效果，确认后再导出。' },
-  { id: 'watermark', group: '版面印记', label: '文字水印', icon: Stamp, detail: '叠加中英文水印，可调颜色、角度与不透明度。' },
-  { id: 'stamp', group: '版面印记', label: '签名与图片', icon: PenTool, detail: '手写签名或上传图片，调整位置、大小与不透明度后应用到页面。' },
-  { id: 'layout', group: '版面印记', label: '裁剪与排版', icon: LayoutGrid, detail: '裁剪四边留白、等比适配 A4，或将 2 / 4 页合排到一张纸。' },
-  { id: 'images', group: '识别与转换', label: '转为图片', icon: ImageDown, detail: '逐页渲染为 PNG 或 JPG 图片，打包为 ZIP 下载。' },
-  { id: 'text', group: '识别与转换', label: '提取文字', icon: FileText, detail: '提取文档内已有的可选文字，支持按页搜索并导出 TXT；扫描图片请改用 OCR。' },
-  { id: 'ocr', group: '识别与转换', label: '扫描件 OCR', icon: ScanText, detail: '使用本地模型识别中英文扫描件，导出 TXT 或可搜索 PDF。' },
-  { id: 'compress', group: '识别与转换', label: '压缩 PDF', icon: Minimize2, detail: '提供重存优化与扫描件降采样，对比压缩前后体积后下载。' },
-  { id: 'compare', group: '识别与转换', label: '视觉对比', icon: Columns2, detail: '同步翻页，通过滑块、透明叠加或左右并排对照两份文档。' },
+
+const MODE_DEFS = [
+  { id: 'organize' as const, groupKey: 'organize' as const, icon: Layers },
+  { id: 'extract' as const, groupKey: 'organize' as const, icon: FileStack },
+  { id: 'split' as const, groupKey: 'organize' as const, icon: Scissors },
+  { id: 'duplex' as const, groupKey: 'organize' as const, icon: ArrowUpDown },
+  { id: 'blank' as const, groupKey: 'organize' as const, icon: FileSearch },
+  { id: 'numbers' as const, groupKey: 'layout' as const, icon: ListOrdered },
+  { id: 'watermark' as const, groupKey: 'layout' as const, icon: Stamp },
+  { id: 'stamp' as const, groupKey: 'layout' as const, icon: PenTool },
+  { id: 'layout' as const, groupKey: 'layout' as const, icon: LayoutGrid },
+  { id: 'images' as const, groupKey: 'convert' as const, icon: ImageDown },
+  { id: 'text' as const, groupKey: 'convert' as const, icon: FileText },
+  { id: 'ocr' as const, groupKey: 'convert' as const, icon: ScanText },
+  { id: 'compress' as const, groupKey: 'convert' as const, icon: Minimize2 },
+  { id: 'compare' as const, groupKey: 'convert' as const, icon: Columns2 },
 ] as const;
+
+const GROUP_KEYS = ['organize', 'layout', 'convert'] as const;
+
 const bytesLabel = (size: number) => `${(size / 1024 / 1024).toFixed(1)} MiB`;
+
 function highlightText(text: string, query: string) {
   const first = query ? text.toLowerCase().indexOf(query.toLowerCase()) : 0;
   const offset = Math.max(0, first - 200), end = offset + 4000;
@@ -59,7 +64,7 @@ function highlightText(text: string, query: string) {
   return parts;
 }
 
-function PageCanvas({ page, source, renderer, large = false }: { page: PdfPage; source: PdfSource; renderer: Renderer; large?: boolean }) {
+function PageCanvas({ page, source, renderer, large = false, failedText = '预览不可用', spinnerAria = '正在生成预览' }: { page: PdfPage; source: PdfSource; renderer: Renderer; large?: boolean; failedText?: string; spinnerAria?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(large);
   const [image, setImage] = useState<string>();
@@ -90,7 +95,7 @@ function PageCanvas({ page, source, renderer, large = false }: { page: PdfPage; 
   }, [visible, page.index, page.rotation, page.sourceId, source, renderer, large]);
   return <div ref={ref} className={`pdf-page-image${large ? ' large' : ''}`} aria-busy={visible && !image && !error}>
     {image ? <img src={image} alt={`${source.name} 第 ${page.index + 1} 页${page.rotation ? `，旋转 ${page.rotation} 度` : ''}`} draggable={false} />
-      : error ? <span className="pdf-preview-failed"><FileText size={24} />预览不可用</span> : <LoaderCircle size={20} className="pdf-spinner" aria-label="正在生成预览" />}
+      : error ? <span className="pdf-preview-failed"><FileText size={24} />{failedText}</span> : <LoaderCircle size={20} className="pdf-spinner" aria-label={spinnerAria} />}
   </div>;
 }
 
@@ -100,6 +105,9 @@ function SortablePage({ id, index, selected, disabled, children }: { id: string;
 }
 
 export function PdfApp() {
+  const { t } = usePdfI18n();
+  const wb = t.workbench;
+
   const [sources, setSources] = useState<PdfSource[]>([]);
   const [history, setHistory] = useState<History>({ pages: [], past: [], future: [] });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -135,10 +143,18 @@ export function PdfApp() {
   const client = useRef<ReturnType<typeof createPdfClient> | null>(null);
   const renderer = useRef<Renderer | null>(null);
   const offline = useOffline();
+
+  const groupLabels: Record<typeof GROUP_KEYS[number], string> = {
+    organize: wb.modeGroups.organize,
+    layout: wb.modeGroups.layout,
+    convert: wb.modeGroups.convert,
+  };
+  const modeInfo = wb.modes[mode] || { label: mode, detail: '' };
+  const selectedMode = { id: mode, label: modeInfo.label, detail: modeInfo.detail };
+
   const { pages } = history;
   const countSelected = pages.filter(p => selected.has(p.id)).length;
   const outputPages = scope === 'selected' || mode === 'extract' ? pages.filter(p => selected.has(p.id)) : pages;
-  const selectedMode = modes.find(m => m.id === mode)!;
   const totalSize = sources.reduce((n, s) => n + s.bytes.length, 0);
   const activeSources = sources.filter(s => pages.some(p => p.sourceId === s.id));
   const previewIndex = pages.findIndex(p => p.id === preview);
@@ -148,7 +164,7 @@ export function PdfApp() {
 
   useEffect(() => {
     const tool = new URLSearchParams(location.search).get('tool');
-    if (tool && modes.some(item => item.id === tool)) {
+    if (tool && MODE_DEFS.some(item => item.id === tool)) {
       setMode(tool as Mode); setScope(tool === 'extract' ? 'selected' : 'all');
     }
   }, []);
@@ -188,7 +204,7 @@ export function PdfApp() {
       return redo ? { pages: stack[0], past: [...old.past, old.pages], future: stack.slice(1) }
         : { pages: stack[stack.length - 1], past: stack.slice(0, -1), future: [old.pages, ...old.future] };
     });
-    setSelected(new Set()); setResult(undefined); setRangeError(''); setApplied(''); setAnnouncement(redo ? '已重做' : '已撤销');
+    setSelected(new Set()); setResult(undefined); setRangeError(''); setApplied(''); setAnnouncement(redo ? wb.redoMsg : wb.undoMsg);
   }
   function rotate(ids: Set<string>) {
     edit(pages.map(p => ids.has(p.id) ? { ...p, rotation: (p.rotation + 90) % 360 } : p), `已旋转 ${ids.size} 页`);
@@ -204,10 +220,10 @@ export function PdfApp() {
     }
   }
   function clear() {
-    if (!window.confirm('清空当前任务？未下载的编辑结果将丢失，原文件不受影响。')) return;
+    if (!window.confirm(wb.confirmClear)) return;
     setSources([]); setHistory({ pages: [], past: [], future: [] }); setSelected(new Set()); setResult(undefined); setErrors([]);
     setApplied('');
-    renderer.current?.destroy(); renderer.current = null; setRange(''); setRangeError(''); setAnnouncement('任务已清空');
+    renderer.current?.destroy(); renderer.current = null; setRange(''); setRangeError(''); setAnnouncement(wb.clearMsg);
   }
   async function importFiles(files: File[]) {
     if (busyRef.current || !files.length) return;
@@ -255,7 +271,7 @@ export function PdfApp() {
     finally { busyRef.current = false; setBusy(''); }
   }
   function cancel() {
-    cancelled.current = true; client.current?.destroy(); client.current = null; ocrClient.current?.destroy(); ocrClient.current = null; setAnnouncement('已取消操作');
+    cancelled.current = true; client.current?.destroy(); client.current = null; ocrClient.current?.destroy(); ocrClient.current = null; setAnnouncement(wb.cancelMsg);
   }
   function selectRange() {
     try {
@@ -410,7 +426,7 @@ export function PdfApp() {
       if (cancelled.current) return;
       const url = URL.createObjectURL(blob);
       setResult({ url, name: downloadName, size: blob.size, count: outputPages.length, before, note, pdf, rotation });
-      setAnnouncement('导出完成，可以下载结果');
+      setAnnouncement(wb.exportDoneMsg);
     } catch (error) { if (!cancelled.current) setErrors([error instanceof Error ? error.message : '导出失败，请重试。']); }
     finally { ocrClient.current?.destroy(); ocrClient.current = null; busyRef.current = false; setBusy(''); setProgress(0); }
   }
@@ -418,49 +434,58 @@ export function PdfApp() {
   return <div className="app-shell pdf-app">
     <SiteHeader active="pdf" onHelp={() => document.getElementById('pdf-guide')?.scrollIntoView({ behavior: 'smooth' })} />
     <main>
-      <section className="pdf-studio-bar">
-        <div className="pdf-studio-title">
-          <h1>PDF 工作台</h1>
-          <span className="pdf-studio-sep" aria-hidden="true" />
-          <span className="pdf-mode-badge">{selectedMode.label}</span>
-          <p className="pdf-mode-summary">{selectedMode.detail}</p>
+      <section className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1.5 pt-3.5 pb-3 max-md:pt-3 max-md:pb-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h1 className="m-0 text-[17px] max-md:text-base leading-snug font-semibold tracking-[-0.02em] whitespace-nowrap text-ink">
+            {wb.title}
+          </h1>
+          <span className="h-3.5 w-px shrink-0 bg-control-line" aria-hidden="true" />
+          <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-accent">
+            {selectedMode.label}
+          </span>
+          <p className="m-0 truncate text-xs text-muted">
+            {selectedMode.detail}
+          </p>
         </div>
-        <span className="pdf-status-pill"><LockKeyhole size={12} />{pages.length ? `${activeSources.length} 份来源 · ${pages.length} 页` : '本地离线处理'}</span>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface px-3 py-1 max-md:px-2.5 max-md:py-0.5 text-[11.5px] max-md:text-[11px] font-medium whitespace-nowrap text-muted tabular-nums">
+          <LockKeyhole size={12} />
+          {pages.length ? wb.statusPill.replace('{0}', String(activeSources.length)).replace('{1}', String(pages.length)) : wb.statusOffline}
+        </span>
       </section>
-      <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden aria-label="导入 PDF 或图片" onChange={event => { void importFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+      <input ref={input} type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple hidden aria-label={wb.importInputAria} onChange={event => { void importFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
       <div className={`workspace pdf-workspace${dragging ? ' pdf-drop-active' : ''}`} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDragging(true); } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }} onDrop={event => { if (event.dataTransfer.files.length) { event.preventDefault(); setDragging(false); void importFiles(Array.from(event.dataTransfer.files)); } }}>
         <div className="pdf-tool-tabs" role="group" aria-label="PDF 工具">
-          {modeGroups.map(groupName => (
-            <div className="pdf-rail-group" key={groupName}>
-              <span className="pdf-rail-heading">{groupName}</span>
+          {GROUP_KEYS.map(groupKey => (
+            <div className="pdf-rail-group" key={groupKey}>
+              <span className="pdf-rail-heading">{groupLabels[groupKey]}</span>
               <div className="pdf-rail-items">
-                {modes.filter(item => item.group === groupName).map(({ id, label, icon: Icon }) => (
-                  <button key={id} type="button" aria-pressed={mode === id} onClick={() => chooseMode(id)} disabled={!!busy}><Icon size={15} />{label}</button>
+                {MODE_DEFS.filter(item => item.groupKey === groupKey).map(({ id, icon: Icon }) => (
+                  <button key={id} type="button" aria-pressed={mode === id} onClick={() => chooseMode(id)} disabled={!!busy}><Icon size={15} />{wb.modes[id]?.label || id}</button>
                 ))}
               </div>
             </div>
           ))}
         </div>
         {mode === 'compare' ? <div className="pdf-compare-shell"><PdfCompare sources={activeSources} pages={pages} renderer={getRenderer()} busy={busy} onAdd={() => input.current?.click()} onClear={clear} onCancel={cancel} />{!!errors.length && <div className="pdf-errors" role="alert">{errors.join('；')}</div>}</div> : <>
-        <section className="workspace-main pdf-main" aria-label="页面工作区" aria-busy={!!busy}>
+        <section className="workspace-main pdf-main" aria-label={wb.docPages} aria-busy={!!busy}>
           <div className="panel-heading">
-            <h2><FileText size={16} />文档页面 <span className="count">{pages.length}</span></h2>
-            <div className="toolbar"><button disabled={!!busy || !sources.length} onClick={clear} aria-label="清空 PDF 任务">清空</button><button disabled={!!busy} onClick={() => input.current?.click()}><Plus size={14} />添加文件</button></div>
+            <h2><FileText size={16} />{wb.docPages} <span className="count">{pages.length}</span></h2>
+            <div className="toolbar"><button disabled={!!busy || !sources.length} onClick={clear} aria-label={wb.clear}>{wb.clear}</button><button disabled={!!busy} onClick={() => input.current?.click()}><Plus size={14} />{wb.addFiles}</button></div>
           </div>
-          {!!errors.length && <div className="pdf-errors" role="alert"><div><strong>未能完成处理</strong><ul>{errors.map((error, index) => <li key={index}>{error}</li>)}</ul></div><button aria-label="关闭错误提示" onClick={() => setErrors([])}><X size={16} /></button></div>}
+          {!!errors.length && <div className="pdf-errors" role="alert"><div><strong>{wb.errorsTitle}</strong><ul>{errors.map((error, index) => <li key={index}>{error}</li>)}</ul></div><button aria-label="关闭错误提示" onClick={() => setErrors([])}><X size={16} /></button></div>}
           {applied && <p className="pdf-applied" role="status"><Check size={15} />{applied}</p>}
           {!!pages.length ? <>
             <div className="pdf-selection-toolbar">
-              <label><input type="checkbox" aria-label="全选页面" checked={countSelected === pages.length} disabled={!!busy} onChange={e => { setSelected(e.target.checked ? new Set(pages.map(p => p.id)) : new Set()); setResult(undefined); }} />已选 {countSelected} 页</label>
-              <div className="pdf-batch-actions"><button disabled={!!busy || !countSelected} onClick={() => rotate(selected)}><RotateCw size={14} />旋转</button><button disabled={!!busy || !countSelected} onClick={() => remove(selected)}><Trash2 size={14} />删除</button><span className="pdf-toolbar-divider" /><button disabled={!!busy || !history.past.length} onClick={() => undo()} aria-label="撤销"><Undo2 size={16} /></button><button disabled={!!busy || !history.future.length} onClick={() => undo(true)} aria-label="重做"><Redo2 size={16} /></button></div>
+              <label><input type="checkbox" aria-label={wb.selectAllAria} checked={countSelected === pages.length} disabled={!!busy} onChange={e => { setSelected(e.target.checked ? new Set(pages.map(p => p.id)) : new Set()); setResult(undefined); }} />{wb.selectedPages.replace('{0}', String(countSelected))}</label>
+              <div className="pdf-batch-actions"><button disabled={!!busy || !countSelected} onClick={() => rotate(selected)}><RotateCw size={14} />{wb.rotate}</button><button disabled={!!busy || !countSelected} onClick={() => remove(selected)}><Trash2 size={14} />{wb.delete}</button><span className="pdf-toolbar-divider" /><button disabled={!!busy || !history.past.length} onClick={() => undo()} aria-label={wb.undoAria}><Undo2 size={16} /></button><button disabled={!!busy || !history.future.length} onClick={() => undo(true)} aria-label={wb.redoAria}><Redo2 size={16} /></button></div>
             </div>
-            <div className="pdf-document-strip"><span>{activeSources.length} 个文件 · {bytesLabel(totalSize)}</span><span>拖拽页面排序，也可使用前移 / 后移按钮</span></div>
+            <div className="pdf-document-strip"><span>{wb.sourcesStrip.replace('{0}', String(activeSources.length)).replace('{1}', bytesLabel(totalSize))}</span><span>{wb.dragOrderHint}</span></div>
             {mode === 'text' || mode === 'ocr' ? <div className="pdf-text-panel">
-              <label className="pdf-text-search"><Search size={16} /><input type="search" aria-label="搜索提取文字" placeholder="搜索提取文字" value={textQuery} disabled={!textPages.length || !!busy} onChange={e => setTextQuery(e.target.value)} /></label>
-              {!textPages.length ? <p className="pdf-text-hint">{mode === 'ocr' ? '选择语言和输出格式，点击“开始 OCR”。完成后可在这里按页核对、搜索文字并查看原页。' : '点击“提取文字”，即可在这里按页阅读和搜索。扫描图片页请切换到“扫描件 OCR”。'}</p> : <>
-                <p className="pdf-text-hint" role="status">已{mode === 'ocr' ? '识别' : '提取'} {textPages.length} 页{textQuery && `，${textMatches.length} 页包含“${textQuery}”`}。每页预览最多 4000 字符，输出保留完整结果；复杂排版可能需要手动整理。</p>
-                {!textMatches.length && <p className="pdf-text-hint">没有匹配文字，请更换关键词。</p>}
-                {textMatches.map(item => <article className="pdf-text-page" key={item.id}><button onClick={() => setPreview(item.id)} disabled={!!busy}>第 {item.number} 页<ZoomIn size={14} /><span>查看原页</span></button><pre tabIndex={0} aria-label={`第 ${item.number} 页提取文字`}>{item.text ? highlightText(item.text, textQuery) : '此页未提取到文字，可能是扫描页。'}</pre></article>)}
+              <label className="pdf-text-search"><Search size={16} /><input type="search" aria-label={wb.searchText} placeholder={wb.searchText} value={textQuery} disabled={!textPages.length || !!busy} onChange={e => setTextQuery(e.target.value)} /></label>
+              {!textPages.length ? <p className="pdf-text-hint">{mode === 'ocr' ? wb.textHintOcrPending : wb.textHintTextPending}</p> : <>
+                <p className="pdf-text-hint" role="status">{wb.textExtractedSummary.replace('{0}', mode === 'ocr' ? '识别' : '提取').replace('{1}', String(textPages.length)).replace('{2}', textQuery ? `，${textMatches.length} 页包含“${textQuery}”` : '')}</p>
+                {!textMatches.length && <p className="pdf-text-hint">{wb.noMatch}</p>}
+                {textMatches.map(item => <article className="pdf-text-page" key={item.id}><button onClick={() => setPreview(item.id)} disabled={!!busy}>{wb.pageNumber.replace('{0}', String(item.number))}<ZoomIn size={14} /><span>{wb.viewOriginalPage}</span></button><pre tabIndex={0} aria-label={`${wb.pageNumber.replace('{0}', String(item.number))} ${wb.searchText}`}>{item.text ? highlightText(item.text, textQuery) : wb.noTextExtracted}</pre></article>)}
               </>}
             </div> : <DragDropProvider onDragStart={event => setDragPage(String(event.operation.source?.id))} onDragEnd={event => {
               setDragPage(undefined);
@@ -470,71 +495,71 @@ export function PdfApp() {
               {pages.map((page, index) => {
                 const source = sources.find(s => s.id === page.sourceId)!;
                 return <SortablePage key={page.id} id={page.id} index={index} selected={selected.has(page.id)} disabled={!!busy}>{handleRef => <>
-                  <div className="pdf-page-top"><label><input type="checkbox" aria-label={`选择第 ${index + 1} 页`} checked={selected.has(page.id)} disabled={!!busy} onChange={event => { const next = new Set(selected); if (event.target.checked) next.add(page.id); else next.delete(page.id); setSelected(next); setResult(undefined); }} /><span>{String(index + 1).padStart(2, '0')}</span></label><button ref={handleRef} className="pdf-drag-handle" aria-label={`拖动第 ${index + 1} 页排序`} title="拖动排序；也可按空格和方向键" disabled={!!busy}><GripVertical size={15} aria-hidden="true" /></button></div>
-                  <button className="pdf-preview-button" aria-label={`预览第 ${index + 1} 页`} onClick={() => setPreview(page.id)}><PageCanvas page={page} source={source} renderer={getRenderer()} /><span className="pdf-zoom"><ZoomIn size={15} />预览</span></button>
-                  <p title={source.name}>{source.name}</p><span className="pdf-source-page">原文件第 {page.index + 1} 页{page.rotation ? ` · ${page.rotation}°` : ''}</span>
-                  {mode === 'blank' && blankCandidates?.some(p => p.id === page.id) && <span className="pdf-blank-tag">候选空白 · 请确认</span>}
-                  <div className="pdf-page-actions"><button disabled={!!busy || index === 0} aria-label={`前移第 ${index + 1} 页`} title="前移" onClick={() => reorder(index, index - 1)}><ArrowUp size={14} /></button><button disabled={!!busy || index === pages.length - 1} aria-label={`后移第 ${index + 1} 页`} title="后移" onClick={() => reorder(index, index + 1)}><ArrowDown size={14} /></button><button disabled={!!busy} aria-label={`旋转第 ${index + 1} 页`} title="顺时针旋转 90°" onClick={() => rotate(new Set([page.id]))}><RotateCw size={14} /></button><button disabled={!!busy} aria-label={`删除第 ${index + 1} 页`} title="删除页面" onClick={() => remove(new Set([page.id]))}><Trash2 size={14} /></button></div>
+                  <div className="pdf-page-top"><label><input type="checkbox" aria-label={`选择第 ${index + 1} 页`} checked={selected.has(page.id)} disabled={!!busy} onChange={event => { const next = new Set(selected); if (event.target.checked) next.add(page.id); else next.delete(page.id); setSelected(next); setResult(undefined); }} /><span>{String(index + 1).padStart(2, '0')}</span></label><button ref={handleRef} className="pdf-drag-handle" aria-label={wb.dragHandleAria.replace('{0}', String(index + 1))} title={wb.dragHandleTitle} disabled={!!busy}><GripVertical size={15} aria-hidden="true" /></button></div>
+                  <button className="pdf-preview-button" aria-label={wb.previewPageAria.replace('{0}', String(index + 1))} onClick={() => setPreview(page.id)}><PageCanvas page={page} source={source} renderer={getRenderer()} failedText={wb.previewUnavailable} spinnerAria={wb.previewGenerating} /><span className="pdf-zoom"><ZoomIn size={15} />{wb.preview}</span></button>
+                  <p title={source.name}>{source.name}</p><span className="pdf-source-page">{wb.origPagePrefix.replace('{0}', String(page.index + 1))}{page.rotation ? ` · ${page.rotation}°` : ''}</span>
+                  {mode === 'blank' && blankCandidates?.some(p => p.id === page.id) && <span className="pdf-blank-tag">{wb.candidateBlank}</span>}
+                  <div className="pdf-page-actions"><button disabled={!!busy || index === 0} aria-label={wb.moveUp} title={wb.moveUp} onClick={() => reorder(index, index - 1)}><ArrowUp size={14} /></button><button disabled={!!busy || index === pages.length - 1} aria-label={wb.moveDown} title={wb.moveDown} onClick={() => reorder(index, index + 1)}><ArrowDown size={14} /></button><button disabled={!!busy} aria-label={wb.rotate90} title={wb.rotate90} onClick={() => rotate(new Set([page.id]))}><RotateCw size={14} /></button><button disabled={!!busy} aria-label={wb.deletePage} title={wb.deletePage} onClick={() => remove(new Set([page.id]))}><Trash2 size={14} /></button></div>
                 </>}</SortablePage>;
               })}
-              <button className="pdf-add-page" disabled={!!busy} onClick={() => input.current?.click()}><FilePlus2 size={28} /><strong>继续添加</strong><span>PDF / PNG / JPG</span></button>
+              <button className="pdf-add-page" disabled={!!busy} onClick={() => input.current?.click()}><FilePlus2 size={28} /><strong>{wb.continueAdd}</strong><span>PDF / PNG / JPG</span></button>
             </div></DragDropProvider>}
           </> : <div className="dropzone pdf-empty">
             <div className="import-icon"><FilePlus2 size={30} strokeWidth={1.5} /></div>
-            <h2>{history.past.length ? '页面已全部移除' : '从一份文档开始'}</h2>
-            <p>{history.past.length ? '撤销可以恢复页面，也可以添加新的文件。' : '把 PDF 拖到这里，或添加图片生成 PDF'}</p>
-            <button className="primary import-button" disabled={!!busy} onClick={() => input.current?.click()}><Upload size={16} />选择文件<ArrowRight size={15} /></button>
-            {history.past.length ? <button className="pdf-empty-undo" disabled={!!busy} onClick={() => undo()}><Undo2 size={14} />撤销删除</button> : <div className="sample-line">想先试试看？<button disabled={!!busy} onClick={() => void sample()}>载入示例文档<ArrowRight size={12} /></button></div>}
-            <span className="drop-hint">单个文件 ≤ 40 MiB · 总计 ≤ 100 MiB · 最多 200 页</span>
+            <h2>{history.past.length ? wb.emptyAllRemovedTitle : wb.emptyStartTitle}</h2>
+            <p>{history.past.length ? wb.emptyAllRemovedDesc : wb.emptyStartDesc}</p>
+            <button className="primary import-button" disabled={!!busy} onClick={() => input.current?.click()}><Upload size={16} />{wb.chooseFiles}<ArrowRight size={15} /></button>
+            {history.past.length ? <button className="pdf-empty-undo" disabled={!!busy} onClick={() => undo()}><Undo2 size={14} />{wb.undoDelete}</button> : <div className="sample-line">{wb.trySampleTitle}<button disabled={!!busy} onClick={() => void sample()}>{wb.trySampleBtn}<ArrowRight size={12} /></button></div>}
+            <span className="drop-hint">{wb.emptyLimits}</span>
           </div>}
-          <div className="workspace-bottom"><span>支持拖入多份 PDF 或 PNG / JPG 图片</span><span>支持最近 20 步撤销与重做</span></div>
+          <div className="workspace-bottom"><span>{wb.bottomDragHint}</span><span>{wb.bottomUndoHint}</span></div>
         </section>
-        <aside className="settings pdf-settings" aria-label="导出设置">
-          <div className="panel-heading"><h2>导出设置</h2><span className="settings-dot" /></div>
+        <aside className="settings pdf-settings" aria-label={wb.exportSettings}>
+          <div className="panel-heading"><h2>{wb.exportSettings}</h2><span className="settings-dot" /></div>
           <div className="pdf-setting-section"><h3>{selectedMode.label}</h3><p>{selectedMode.detail}</p></div>
           {mode !== 'duplex' && <fieldset className="pdf-setting-section" disabled={!!busy}>
-            <legend>页面范围</legend>
-            <label className="pdf-radio"><input type="radio" name="pdf-scope" checked={scope === 'all' && mode !== 'extract'} disabled={mode === 'extract'} onChange={() => { setScope('all'); setResult(undefined); }} /><span>全部页面</span><small>{pages.length} 页</small></label>
-            <label className="pdf-radio"><input type="radio" name="pdf-scope" checked={scope === 'selected' || mode === 'extract'} onChange={() => { setScope('selected'); setResult(undefined); }} /><span>选中的页面</span><small>{countSelected} 页</small></label>
-            <label className="pdf-field-label" htmlFor="pdf-range">按当前顺序选择页码</label>
-            <div className="pdf-range-row"><input id="pdf-range" placeholder="例如 1-3, 5" value={range} onChange={event => setRange(event.target.value)} aria-invalid={!!rangeError} aria-describedby="pdf-range-error" onKeyDown={e => { if (e.key === 'Enter' && pages.length) selectRange(); }} /><button disabled={!pages.length} onClick={selectRange}>选择</button></div>
-            <p id="pdf-range-error" className={rangeError ? 'pdf-field-error' : 'pdf-field-hint'}>{rangeError || '页码对应左侧排列后的顺序。'}</p>
+            <legend>{wb.pageScope}</legend>
+            <label className="pdf-radio"><input type="radio" name="pdf-scope" checked={scope === 'all' && mode !== 'extract'} disabled={mode === 'extract'} onChange={() => { setScope('all'); setResult(undefined); }} /><span>{wb.scopeAll}</span><small>{wb.pagesCount.replace('{0}', String(pages.length))}</small></label>
+            <label className="pdf-radio"><input type="radio" name="pdf-scope" checked={scope === 'selected' || mode === 'extract'} onChange={() => { setScope('selected'); setResult(undefined); }} /><span>{wb.scopeSelected}</span><small>{wb.pagesCount.replace('{0}', String(countSelected))}</small></label>
+            <label className="pdf-field-label" htmlFor="pdf-range">{wb.selectRangeLabel}</label>
+            <div className="pdf-range-row"><input id="pdf-range" placeholder={wb.selectRangePlaceholder} value={range} onChange={event => setRange(event.target.value)} aria-invalid={!!rangeError} aria-describedby="pdf-range-error" onKeyDown={e => { if (e.key === 'Enter' && pages.length) selectRange(); }} /><button disabled={!pages.length} onClick={selectRange}>{wb.selectBtn}</button></div>
+            <p id="pdf-range-error" className={rangeError ? 'pdf-field-error' : 'pdf-field-hint'}>{rangeError || wb.rangeHint}</p>
           </fieldset>}
           {mode === 'duplex' && <DuplexTools pages={pages} sources={activeSources} busy={!!busy} onApply={next => { edit(next, '已重排正反页面，可撤销'); setSelected(new Set()); setApplied('已重排正反页面。请查看缩略图确认，可撤销或继续导出。'); }} />}
           {mode === 'blank' && <fieldset className="pdf-setting-section pdf-edit-tools" disabled={!!busy}>
-            <legend>空白候选检测</legend>
-            <label className="pdf-edit-field">检测灵敏度<select value={blankThreshold} onChange={e => { setBlankThreshold(e.target.value); setBlankCandidates(undefined); }}><option value="0.005">保守 · 最多 0.005% 墨迹</option><option value="0.025">标准 · 最多 0.025% 墨迹</option><option value="0.1">宽松 · 最多 0.1% 墨迹</option></select></label>
-            <button className="primary pdf-apply" disabled={!outputPages.length} onClick={() => void detectBlankPages()}><Search size={15} />检测 {outputPages.length} 页</button>
-            <p className="pdf-field-hint">检测可见像素，含文字层的页面保留。浅色印章、细线和扫描噪点可能影响结果，请预览确认。</p>
-            {blankCandidates && <div className="pdf-blank-results" aria-live="polite"><strong>{blankCandidates.length ? `找到 ${blankCandidates.length} 个候选页，尚未删除` : '没有找到空白候选页'}</strong>
-              <div>{blankCandidates.map(candidate => { const number = pages.findIndex(p => p.id === candidate.id) + 1; return <div className="pdf-blank-result" key={candidate.id}><label><input type="checkbox" checked={selected.has(candidate.id)} onChange={e => { const next = new Set(selected); if (e.target.checked) next.add(candidate.id); else next.delete(candidate.id); setSelected(next); }} />候选第 {number} 页</label><button onClick={() => setPreview(candidate.id)} aria-label={`预览空白候选第 ${number} 页`}><ZoomIn size={13} />查看</button></div>; })}</div>
-              {!!blankCandidates.length && <><button className="pdf-inline-action" onClick={() => setSelected(new Set(blankCandidates.map(p => p.id)))}>选择全部候选</button><button className="pdf-delete-candidates" disabled={!blankCandidates.some(p => selected.has(p.id))} onClick={() => remove(new Set(blankCandidates.filter(p => selected.has(p.id)).map(p => p.id)))}><Trash2 size={14} />删除勾选的候选页</button></>}
+            <legend>{wb.blankLegend}</legend>
+            <label className="pdf-edit-field">{wb.blankSensitivity}<select value={blankThreshold} onChange={e => { setBlankThreshold(e.target.value); setBlankCandidates(undefined); }}><option value="0.005">{wb.blankOptions.conservative}</option><option value="0.025">{wb.blankOptions.standard}</option><option value="0.1">{wb.blankOptions.relaxed}</option></select></label>
+            <button className="primary pdf-apply" disabled={!outputPages.length} onClick={() => void detectBlankPages()}><Search size={15} />{wb.detectBlankBtn.replace('{0}', String(outputPages.length))}</button>
+            <p className="pdf-field-hint">{wb.detectBlankHint}</p>
+            {blankCandidates && <div className="pdf-blank-results" aria-live="polite"><strong>{blankCandidates.length ? wb.blankFoundCandidate.replace('{0}', String(blankCandidates.length)) : wb.blankNoCandidate}</strong>
+              <div>{blankCandidates.map(candidate => { const number = pages.findIndex(p => p.id === candidate.id) + 1; return <div className="pdf-blank-result" key={candidate.id}><label><input type="checkbox" checked={selected.has(candidate.id)} onChange={e => { const next = new Set(selected); if (e.target.checked) next.add(candidate.id); else next.delete(candidate.id); setSelected(next); }} />{wb.candidatePageLabel.replace('{0}', String(number))}</label><button onClick={() => setPreview(candidate.id)} aria-label={`${wb.candidatePageLabel.replace('{0}', String(number))} ${wb.viewCandidate}`}><ZoomIn size={13} />{wb.viewCandidate}</button></div>; })}</div>
+              {!!blankCandidates.length && <><button className="pdf-inline-action" onClick={() => setSelected(new Set(blankCandidates.map(p => p.id)))}>{wb.selectAllCandidates}</button><button className="pdf-delete-candidates" disabled={!blankCandidates.some(p => selected.has(p.id))} onClick={() => remove(new Set(blankCandidates.filter(p => selected.has(p.id)).map(p => p.id)))}><Trash2 size={14} />{wb.deleteSelectedCandidates}</button></>}
             </div>}
           </fieldset>}
           {mode === 'stamp' && <StampTools pages={outputPages} sources={activeSources} renderer={getRenderer()} busy={!!busy} onApply={operation => void applyOperation(operation)} />}
           <DocumentTools mode={mode} ocr={ocrOptions} compression={compressionOptions} busy={!!busy} onOcr={options => { setOcrOptions(options); setResult(undefined); }} onCompression={options => { setCompressionOptions(options); setResult(undefined); }} />
           <EditTools mode={mode} busy={!!busy} count={outputPages.length} onApply={operation => void applyOperation(operation)} />
-          {mode === 'images' && <fieldset className="pdf-setting-section" disabled={!!busy}><legend>图片设置</legend><label className="pdf-field-label" htmlFor="pdf-image-format">输出格式</label><select id="pdf-image-format" value={imageFormat} onChange={e => { setImageFormat(e.target.value); setResult(undefined); }}><option value="png">PNG · 无损图片</option><option value="jpg">JPG · 较小文件</option></select><label className="pdf-field-label" htmlFor="pdf-dpi">分辨率</label><select id="pdf-dpi" value={dpi} onChange={e => { setDpi(e.target.value); setResult(undefined); }}><option value="72">72 DPI · 屏幕阅读</option><option value="144">144 DPI · 清晰预览</option><option value="216">216 DPI · 更精细</option></select><p className="pdf-field-hint">单页最长边限 4096px，最多 1200 万像素。</p></fieldset>}
-          <fieldset className="pdf-setting-section" disabled={!!busy}><legend>输出文件</legend><label className="pdf-field-label" htmlFor="pdf-filename">文件名</label><div className="pdf-filename-row"><input id="pdf-filename" value={filename} maxLength={120} onChange={event => { setFilename(event.target.value); setResult(undefined); }} /><span>{mode === 'split' || mode === 'images' ? '.zip' : mode === 'text' || (mode === 'ocr' && ocrOptions.format === 'txt') ? '.txt' : '.pdf'}</span></div><p className="pdf-field-hint">{mode === 'split' ? '每页独立保存，文件名自动添加序号。' : mode === 'images' ? '图片按页面顺序编号，打包下载。' : mode === 'text' ? '生成 UTF-8 TXT，按当前页序分隔。不识别扫描图片。' : '按照当前顺序导出，原文件保持不变。'}</p></fieldset>
+          {mode === 'images' && <fieldset className="pdf-setting-section" disabled={!!busy}><legend>{wb.imageSettings}</legend><label className="pdf-field-label" htmlFor="pdf-image-format">{wb.imageFormat}</label><select id="pdf-image-format" value={imageFormat} onChange={e => { setImageFormat(e.target.value); setResult(undefined); }}><option value="png">{wb.pngLossless}</option><option value="jpg">{wb.jpgSmaller}</option></select><label className="pdf-field-label" htmlFor="pdf-dpi">{wb.resolution}</label><select id="pdf-dpi" value={dpi} onChange={e => { setDpi(e.target.value); setResult(undefined); }}><option value="72">{wb.dpi72}</option><option value="144">{wb.dpi144}</option><option value="216">{wb.dpi216}</option></select><p className="pdf-field-hint">{wb.imageBoundsHint}</p></fieldset>}
+          <fieldset className="pdf-setting-section" disabled={!!busy}><legend>{wb.outputFile}</legend><label className="pdf-field-label" htmlFor="pdf-filename">{wb.filename}</label><div className="pdf-filename-row"><input id="pdf-filename" value={filename} maxLength={120} onChange={event => { setFilename(event.target.value); setResult(undefined); }} /><span>{mode === 'split' || mode === 'images' ? '.zip' : mode === 'text' || (mode === 'ocr' && ocrOptions.format === 'txt') ? '.txt' : '.pdf'}</span></div><p className="pdf-field-hint">{mode === 'split' ? wb.filenameHints.split : mode === 'images' ? wb.filenameHints.images : mode === 'text' ? wb.filenameHints.text : wb.filenameHints.default}</p></fieldset>
           <div className="pdf-export-section">
-            <div className="pdf-output-summary"><span>本次导出</span><strong>{outputPages.length} 页</strong></div>
-            <button className="primary pdf-export" disabled={!!busy || !outputPages.length || (mode === 'compress' && compressionOptions.method === 'scan' && !compressionOptions.consent)} onClick={() => void exportDocument()}>{busy ? <LoaderCircle size={17} className="pdf-spinner" /> : <Download size={17} />}{busy ? '正在处理' : mode === 'ocr' ? '开始 OCR' : mode === 'compress' ? '压缩并比较体积' : mode === 'text' ? '提取文字并生成 TXT' : mode === 'images' || mode === 'split' ? '生成 ZIP' : '生成 PDF'}{!busy && <ArrowRight size={15} />}</button>
-            {(mode === 'extract' || scope === 'selected') && !countSelected && <p className="pdf-field-hint">在左侧勾选页面，或输入页码范围。</p>}
-            {!!busy && <div className="pdf-progress" role="status"><span>{busy}</span><progress value={progress} max={100} aria-label="处理进度" /><button onClick={cancel}>取消操作</button></div>}
-            {result && <div className="pdf-result" role="status"><strong><Check size={15} />导出完成</strong><span title={result.name}>{result.name}</span><small>{result.count} 页 · {bytesLabel(result.size)}</small>{result.before !== undefined && <small>处理前 {result.before.toLocaleString()} 字节 → 处理后 {result.size.toLocaleString()} 字节</small>}{result.note && <p>{result.note}</p>}{result.pdf && <button className="pdf-inline-action" onClick={() => setOutputPreview(true)}><ZoomIn size={14} />预览结果首页</button>}<a className="primary" href={result.url} download={result.name}><Download size={15} />下载结果</a></div>}
+            <div className="pdf-output-summary"><span>{wb.exportSummary}</span><strong>{wb.pagesCount.replace('{0}', String(outputPages.length))}</strong></div>
+            <button className="primary pdf-export" disabled={!!busy || !outputPages.length || (mode === 'compress' && compressionOptions.method === 'scan' && !compressionOptions.consent)} onClick={() => void exportDocument()}>{busy ? <LoaderCircle size={17} className="pdf-spinner" /> : <Download size={17} />}{busy ? wb.exportBtn.processing : mode === 'ocr' ? wb.exportBtn.ocr : mode === 'compress' ? wb.exportBtn.compress : mode === 'text' ? wb.exportBtn.text : mode === 'images' || mode === 'split' ? wb.exportBtn.zip : wb.exportBtn.pdf}{!busy && <ArrowRight size={15} />}</button>
+            {(mode === 'extract' || scope === 'selected') && !countSelected && <p className="pdf-field-hint">{wb.rangeNotice}</p>}
+            {!!busy && <div className="pdf-progress" role="status"><span>{busy}</span><progress value={progress} max={100} aria-label="处理进度" /><button onClick={cancel}>{wb.cancelOperation}</button></div>}
+            {result && <div className="pdf-result" role="status"><strong><Check size={15} />{wb.exportComplete}</strong><span title={result.name}>{result.name}</span><small>{wb.pagesCount.replace('{0}', String(result.count))} · {bytesLabel(result.size)}</small>{result.before !== undefined && <small>处理前 {result.before.toLocaleString()} 字节 → 处理后 {result.size.toLocaleString()} 字节</small>}{result.note && <p>{result.note}</p>}{result.pdf && <button className="pdf-inline-action" onClick={() => setOutputPreview(true)}><ZoomIn size={14} />{wb.previewFirstPage}</button>}<a className="primary" href={result.url} download={result.name}><Download size={15} />{wb.downloadResult}</a></div>}
           </div>
         </aside>
         </>}
       </div>
-      <section className="pdf-guide" id="pdf-guide" aria-label="使用指南与功能说明"><details><summary>使用指南与支持范围</summary><div><article><h2><Layers size={16} />页面整理</h2><p>导入多份 PDF 或 PNG / JPG 图片后，可拖拽卡片或使用上下箭头调整顺序，勾选页面后批量旋转或删除，支持 20 步撤销与重做。</p></article><article><h2><CheckCheck size={16} />导出与识别</h2><p>支持按页码范围（如 1-3, 5）提取、单页拆分打包 ZIP、批量转图片、中英文扫描件 OCR（导出 TXT 或可搜索 PDF）以及体积压缩。</p></article><article><h2><ShieldCheck size={16} />支持范围</h2><p>单个文件 ≤ 40 MiB，总计 ≤ 100 MiB，最多 200 页。不支持密码加密文档、交互表单与数字签名字段；有损压缩会移除原有文字层与链接。</p></article></div></details></section>
-      <footer className="pdf-footer"><span>FolioForge · 页匠</span><span role="status"><span className="live-dot" />{offline}</span></footer>
+      <section className="pdf-guide" id="pdf-guide" aria-label={wb.guideAria}><details><summary>{wb.guideSummary}</summary><div><article><h2><Layers size={16} />{wb.guideOrganizeTitle}</h2><p>{wb.guideOrganizeDesc}</p></article><article><h2><CheckCheck size={16} />{wb.guideExportTitle}</h2><p>{wb.guideExportDesc}</p></article><article><h2><ShieldCheck size={16} />{wb.guideScopeTitle}</h2><p>{wb.guideScopeDesc}</p></article></div></details></section>
+      <footer className="pdf-footer"><span>{wb.footerBrand}</span><span role="status"><span className="live-dot" />{offline}</span></footer>
     </main>
     <span className="pdf-sr-only" aria-live="polite">{announcement}</span>
-    <dialog ref={outputDialog} className="pdf-preview-dialog" onCancel={() => setOutputPreview(false)} onClick={event => { if (event.target === event.currentTarget) setOutputPreview(false); }} aria-label="PDF 输出预览">
-      {result?.pdf && <><div className="pdf-dialog-heading"><strong>输出预览 · 第 1 页</strong><button onClick={() => setOutputPreview(false)} aria-label="关闭输出预览"><X size={20} /></button></div><div className="pdf-preview-content"><PageCanvas page={{ id: 'output', sourceId: result.pdf.id, index: 0, rotation: result.rotation ?? 0 }} source={result.pdf} renderer={getRenderer()} large /></div></>}
+    <dialog ref={outputDialog} className="pdf-preview-dialog" onCancel={() => setOutputPreview(false)} onClick={event => { if (event.target === event.currentTarget) setOutputPreview(false); }} aria-label={wb.outputPreviewTitle}>
+      {result?.pdf && <><div className="pdf-dialog-heading"><strong>{wb.outputPreviewTitle}</strong><button onClick={() => setOutputPreview(false)} aria-label="关闭输出预览"><X size={20} /></button></div><div className="pdf-preview-content"><PageCanvas page={{ id: 'output', sourceId: result.pdf.id, index: 0, rotation: result.rotation ?? 0 }} source={result.pdf} renderer={getRenderer()} large failedText={wb.previewUnavailable} spinnerAria={wb.previewGenerating} /></div></>}
     </dialog>
-    <dialog ref={dialog} className="pdf-preview-dialog" onCancel={() => setPreview(undefined)} onClick={event => { if (event.target === event.currentTarget) setPreview(undefined); }} aria-label="PDF 页面预览">
-      {previewIndex >= 0 && <><div className="pdf-dialog-heading"><strong>第 {previewIndex + 1} 页 / 共 {pages.length} 页</strong><button onClick={() => setPreview(undefined)} aria-label="关闭页面预览"><X size={20} /></button></div><div className="pdf-preview-content"><PageCanvas page={pages[previewIndex]} source={sources.find(s => s.id === pages[previewIndex].sourceId)!} renderer={getRenderer()} large /></div><div className="pdf-dialog-footer"><button disabled={previewIndex === 0} onClick={() => setPreview(pages[previewIndex - 1].id)}><ArrowLeft size={15} />上一页</button><span title={sources.find(s => s.id === pages[previewIndex].sourceId)?.name}>{sources.find(s => s.id === pages[previewIndex].sourceId)?.name}</span><button disabled={previewIndex === pages.length - 1} onClick={() => setPreview(pages[previewIndex + 1].id)}>下一页<ArrowRight size={15} /></button></div></>}
+    <dialog ref={dialog} className="pdf-preview-dialog" onCancel={() => setPreview(undefined)} onClick={event => { if (event.target === event.currentTarget) setPreview(undefined); }} aria-label={wb.preview}>
+      {previewIndex >= 0 && <><div className="pdf-dialog-heading"><strong>{wb.pagePreviewTitle.replace('{0}', String(previewIndex + 1)).replace('{1}', String(pages.length))}</strong><button onClick={() => setPreview(undefined)} aria-label="关闭页面预览"><X size={20} /></button></div><div className="pdf-preview-content"><PageCanvas page={pages[previewIndex]} source={sources.find(s => s.id === pages[previewIndex].sourceId)!} renderer={getRenderer()} large failedText={wb.previewUnavailable} spinnerAria={wb.previewGenerating} /></div><div className="pdf-dialog-footer"><button disabled={previewIndex === 0} onClick={() => setPreview(pages[previewIndex - 1].id)}><ArrowLeft size={15} />{wb.prevPage}</button><span title={sources.find(s => s.id === pages[previewIndex].sourceId)?.name}>{sources.find(s => s.id === pages[previewIndex].sourceId)?.name}</span><button disabled={previewIndex === pages.length - 1} onClick={() => setPreview(pages[previewIndex + 1].id)}>{wb.nextPage}<ArrowRight size={15} /></button></div></>}
     </dialog>
   </div>;
 }

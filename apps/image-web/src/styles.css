@@ -282,7 +282,6 @@
   .image-comparison:fullscreen .image-compare-stage { @apply h-auto min-h-0 flex-1; }
 }
 @media (max-width: 760px) {
-
   .home-intro { @apply pt-6 pb-4; }
   .home-intro h1 { @apply text-[24px]; }
   .home-intro p { @apply max-w-[36ch] text-xs leading-relaxed; }
