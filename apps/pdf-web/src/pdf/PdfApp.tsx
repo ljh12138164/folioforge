@@ -470,7 +470,7 @@ export function PdfApp() {
         <section className="workspace-main pdf-main" aria-label={wb.docPages} aria-busy={!!busy}>
           <div className="panel-heading">
             <h2><FileText size={16} />{wb.docPages} <span className="count">{pages.length}</span></h2>
-            <div className="toolbar"><button disabled={!!busy || !sources.length} onClick={clear} aria-label={wb.clear}>{wb.clear}</button><button disabled={!!busy} onClick={() => input.current?.click()}><Plus size={14} />{wb.addFiles}</button></div>
+            <div className="toolbar"><button disabled={!!busy || !sources.length} onClick={clear} aria-label="清空 PDF 任务">{wb.clear}</button><button disabled={!!busy} onClick={() => input.current?.click()}><Plus size={14} />{wb.addFiles}</button></div>
           </div>
           {!!errors.length && <div className="pdf-errors" role="alert"><div><strong>{wb.errorsTitle}</strong><ul>{errors.map((error, index) => <li key={index}>{error}</li>)}</ul></div><button aria-label="关闭错误提示" onClick={() => setErrors([])}><X size={16} /></button></div>}
           {applied && <p className="pdf-applied" role="status"><Check size={15} />{applied}</p>}
@@ -485,7 +485,7 @@ export function PdfApp() {
               {!textPages.length ? <p className="pdf-text-hint">{mode === 'ocr' ? wb.textHintOcrPending : wb.textHintTextPending}</p> : <>
                 <p className="pdf-text-hint" role="status">{wb.textExtractedSummary.replace('{0}', mode === 'ocr' ? '识别' : '提取').replace('{1}', String(textPages.length)).replace('{2}', textQuery ? `，${textMatches.length} 页包含“${textQuery}”` : '')}</p>
                 {!textMatches.length && <p className="pdf-text-hint">{wb.noMatch}</p>}
-                {textMatches.map(item => <article className="pdf-text-page" key={item.id}><button onClick={() => setPreview(item.id)} disabled={!!busy}>{wb.pageNumber.replace('{0}', String(item.number))}<ZoomIn size={14} /><span>{wb.viewOriginalPage}</span></button><pre tabIndex={0} aria-label={`${wb.pageNumber.replace('{0}', String(item.number))} ${wb.searchText}`}>{item.text ? highlightText(item.text, textQuery) : wb.noTextExtracted}</pre></article>)}
+                {textMatches.map(item => <article className="pdf-text-page" key={item.id}><button onClick={() => setPreview(item.id)} disabled={!!busy}>{wb.pageNumber.replace('{0}', String(item.number))}<ZoomIn size={14} /><span>{wb.viewOriginalPage}</span></button><pre tabIndex={0} aria-label={`第 ${item.number} 页提取文字`}>{item.text ? highlightText(item.text, textQuery) : wb.noTextExtracted}</pre></article>)}
               </>}
             </div> : <DragDropProvider onDragStart={event => setDragPage(String(event.operation.source?.id))} onDragEnd={event => {
               setDragPage(undefined);
@@ -499,7 +499,7 @@ export function PdfApp() {
                   <button className="pdf-preview-button" aria-label={wb.previewPageAria.replace('{0}', String(index + 1))} onClick={() => setPreview(page.id)}><PageCanvas page={page} source={source} renderer={getRenderer()} failedText={wb.previewUnavailable} spinnerAria={wb.previewGenerating} /><span className="pdf-zoom"><ZoomIn size={15} />{wb.preview}</span></button>
                   <p title={source.name}>{source.name}</p><span className="pdf-source-page">{wb.origPagePrefix.replace('{0}', String(page.index + 1))}{page.rotation ? ` · ${page.rotation}°` : ''}</span>
                   {mode === 'blank' && blankCandidates?.some(p => p.id === page.id) && <span className="pdf-blank-tag">{wb.candidateBlank}</span>}
-                  <div className="pdf-page-actions"><button disabled={!!busy || index === 0} aria-label={wb.moveUp} title={wb.moveUp} onClick={() => reorder(index, index - 1)}><ArrowUp size={14} /></button><button disabled={!!busy || index === pages.length - 1} aria-label={wb.moveDown} title={wb.moveDown} onClick={() => reorder(index, index + 1)}><ArrowDown size={14} /></button><button disabled={!!busy} aria-label={wb.rotate90} title={wb.rotate90} onClick={() => rotate(new Set([page.id]))}><RotateCw size={14} /></button><button disabled={!!busy} aria-label={wb.deletePage} title={wb.deletePage} onClick={() => remove(new Set([page.id]))}><Trash2 size={14} /></button></div>
+                  <div className="pdf-page-actions"><button disabled={!!busy || index === 0} aria-label={`前移第 ${index + 1} 页`} title={wb.moveUp} onClick={() => reorder(index, index - 1)}><ArrowUp size={14} /></button><button disabled={!!busy || index === pages.length - 1} aria-label={`后移第 ${index + 1} 页`} title={wb.moveDown} onClick={() => reorder(index, index + 1)}><ArrowDown size={14} /></button><button disabled={!!busy} aria-label={`旋转第 ${index + 1} 页`} title={wb.rotate90} onClick={() => rotate(new Set([page.id]))}><RotateCw size={14} /></button><button disabled={!!busy} aria-label={`删除第 ${index + 1} 页`} title={wb.deletePage} onClick={() => remove(new Set([page.id]))}><Trash2 size={14} /></button></div>
                 </>}</SortablePage>;
               })}
               <button className="pdf-add-page" disabled={!!busy} onClick={() => input.current?.click()}><FilePlus2 size={28} /><strong>{wb.continueAdd}</strong><span>PDF / PNG / JPG</span></button>
@@ -532,7 +532,7 @@ export function PdfApp() {
             <button className="primary pdf-apply" disabled={!outputPages.length} onClick={() => void detectBlankPages()}><Search size={15} />{wb.detectBlankBtn.replace('{0}', String(outputPages.length))}</button>
             <p className="pdf-field-hint">{wb.detectBlankHint}</p>
             {blankCandidates && <div className="pdf-blank-results" aria-live="polite"><strong>{blankCandidates.length ? wb.blankFoundCandidate.replace('{0}', String(blankCandidates.length)) : wb.blankNoCandidate}</strong>
-              <div>{blankCandidates.map(candidate => { const number = pages.findIndex(p => p.id === candidate.id) + 1; return <div className="pdf-blank-result" key={candidate.id}><label><input type="checkbox" checked={selected.has(candidate.id)} onChange={e => { const next = new Set(selected); if (e.target.checked) next.add(candidate.id); else next.delete(candidate.id); setSelected(next); }} />{wb.candidatePageLabel.replace('{0}', String(number))}</label><button onClick={() => setPreview(candidate.id)} aria-label={`${wb.candidatePageLabel.replace('{0}', String(number))} ${wb.viewCandidate}`}><ZoomIn size={13} />{wb.viewCandidate}</button></div>; })}</div>
+              <div>{blankCandidates.map(candidate => { const number = pages.findIndex(p => p.id === candidate.id) + 1; return <div className="pdf-blank-result" key={candidate.id}><label><input type="checkbox" checked={selected.has(candidate.id)} onChange={e => { const next = new Set(selected); if (e.target.checked) next.add(candidate.id); else next.delete(candidate.id); setSelected(next); }} />{wb.candidatePageLabel.replace('{0}', String(number))}</label><button onClick={() => setPreview(candidate.id)} aria-label={`预览空白候选第 ${number} 页`}><ZoomIn size={13} />{wb.viewCandidate}</button></div>; })}</div>
               {!!blankCandidates.length && <><button className="pdf-inline-action" onClick={() => setSelected(new Set(blankCandidates.map(p => p.id)))}>{wb.selectAllCandidates}</button><button className="pdf-delete-candidates" disabled={!blankCandidates.some(p => selected.has(p.id))} onClick={() => remove(new Set(blankCandidates.filter(p => selected.has(p.id)).map(p => p.id)))}><Trash2 size={14} />{wb.deleteSelectedCandidates}</button></>}
             </div>}
           </fieldset>}
@@ -555,7 +555,7 @@ export function PdfApp() {
       <footer className="pdf-footer"><span>{wb.footerBrand}</span><span role="status"><span className="live-dot" />{offline}</span></footer>
     </main>
     <span className="pdf-sr-only" aria-live="polite">{announcement}</span>
-    <dialog ref={outputDialog} className="pdf-preview-dialog" onCancel={() => setOutputPreview(false)} onClick={event => { if (event.target === event.currentTarget) setOutputPreview(false); }} aria-label={wb.outputPreviewTitle}>
+    <dialog ref={outputDialog} className="pdf-preview-dialog" onCancel={() => setOutputPreview(false)} onClick={event => { if (event.target === event.currentTarget) setOutputPreview(false); }} aria-label="PDF 输出预览">
       {result?.pdf && <><div className="pdf-dialog-heading"><strong>{wb.outputPreviewTitle}</strong><button onClick={() => setOutputPreview(false)} aria-label="关闭输出预览"><X size={20} /></button></div><div className="pdf-preview-content"><PageCanvas page={{ id: 'output', sourceId: result.pdf.id, index: 0, rotation: result.rotation ?? 0 }} source={result.pdf} renderer={getRenderer()} large failedText={wb.previewUnavailable} spinnerAria={wb.previewGenerating} /></div></>}
     </dialog>
     <dialog ref={dialog} className="pdf-preview-dialog" onCancel={() => setPreview(undefined)} onClick={event => { if (event.target === event.currentTarget) setPreview(undefined); }} aria-label={wb.preview}>

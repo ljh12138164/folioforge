@@ -97,18 +97,22 @@
     @apply ml-2 rounded-md bg-surface px-1.5 py-0.5 text-[11px] font-medium tracking-normal text-muted transition-colors duration-150;
   }
   .brand:hover .brand-tag { @apply bg-accent-soft text-accent; }
-  .site-header nav { @apply flex flex-1 items-center gap-4 text-[13px] font-medium text-muted; }
-  .nav-routes { @apply mx-auto flex items-center gap-0.5 rounded-lg bg-surface p-1; }
+  .site-header nav { @apply flex flex-1 items-center justify-center gap-1 sm:gap-2 text-[13px] font-medium text-muted; }
+  .nav-routes { @apply flex items-center gap-1; }
   .nav-routes a {
-    @apply rounded-md px-3 py-1 text-[12.5px] font-medium whitespace-nowrap text-muted no-underline transition-all duration-150 hover:text-ink;
+    @apply inline-flex min-h-8 items-center justify-center rounded-lg px-3 text-[12.5px] font-medium whitespace-nowrap text-muted no-underline transition-all duration-150 hover:bg-surface/70 hover:text-ink;
+    line-height: 1;
   }
   .nav-routes a[aria-current=page] {
-    @apply bg-panel font-semibold text-ink;
-    box-shadow: var(--shadow-pill);
+    @apply bg-surface font-semibold text-ink;
   }
-  .nav-aux { @apply flex items-center gap-3.5; }
+  .nav-aux { @apply flex items-center gap-1; }
   .nav-aux a, .nav-aux button {
-    @apply inline-flex min-h-8 items-center justify-center px-1 text-[12.5px] font-medium whitespace-nowrap text-muted no-underline hover:text-ink;
+    @apply inline-flex min-h-8 items-center justify-center rounded-lg px-3 text-[12.5px] font-medium whitespace-nowrap text-muted no-underline transition-all duration-150 hover:bg-surface/70 hover:text-ink;
+    line-height: 1;
+  }
+  .nav-aux a[aria-current=page], .nav-aux button[aria-current=page] {
+    @apply bg-surface font-semibold text-ink;
   }
   .header-controls {
     @apply flex shrink-0 items-center gap-1.5;
@@ -192,11 +196,11 @@
   .header.site-header { @apply h-auto flex-wrap gap-y-2 px-3.5 py-2.5; }
   .header-controls, .theme-picker { @apply ml-auto; }
   .theme-picker button span { @apply hidden; }
-  .site-header nav { @apply order-3 ml-0 w-full flex-wrap justify-between gap-2; }
-  .nav-routes { @apply flex-1 justify-between; }
-  .nav-routes a { @apply flex-1 px-2 text-center text-xs; }
-  .nav-aux { @apply gap-2.5; }
-  .nav-aux a, .nav-aux button { @apply text-xs; }
+  .site-header nav { @apply order-3 ml-0 w-full flex items-center justify-center gap-1 pt-1.5 border-t border-line/40; }
+  .nav-routes { @apply flex items-center gap-1; }
+  .nav-routes a { @apply min-h-7 px-2.5 text-center text-xs; }
+  .nav-aux { @apply flex items-center gap-1; }
+  .nav-aux a, .nav-aux button { @apply min-h-7 px-2.5 text-center text-xs; }
 
   main { @apply px-3.5; }
   .panel-heading { @apply h-12 px-3.5; }
@@ -207,9 +211,11 @@
 }
 @media (max-width: 360px) {
   .brand-tag { @apply hidden; }
-  .site-header nav { @apply gap-1.5; }
-  .nav-routes { @apply w-full; }
-  .nav-aux { @apply w-full justify-end; }
+  .site-header nav { @apply gap-0.5 justify-center; }
+  .nav-routes { @apply flex items-center gap-0.5; }
+  .nav-routes a { @apply px-2 text-[11px]; }
+  .nav-aux { @apply flex items-center gap-0.5; }
+  .nav-aux a, .nav-aux button { @apply px-2 text-[11px]; }
   .panel-heading { @apply gap-1 px-3; }
   .toolbar { @apply gap-0.5; }
   .toolbar>button { @apply px-2 py-1 text-[11.5px]; }
