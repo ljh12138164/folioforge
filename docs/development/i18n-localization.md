@@ -56,6 +56,8 @@ Previously, both applications only provided hardcoded Simplified Chinese (`zh-CN
 - `pnpm test:unit`: PASSED (28/28 in image-web, 22/22 in pdf-web).
 - `pnpm build:pdf`: PASSED (Static pages 8/8 generated, offline cache built).
 - Chrome DevTools visual check: Verified popover appearance in both dark and light themes, keyboard selection, and language switching.
+- Pull request: [#12](https://github.com/ljh12138164/folioforge/pull/12)
+- Roadmap: [i18n Localization Roadmap](../roadmaps/i18n-localization.md)
 
 ## Risks
 - Client-side locale initialization might cause hydration mismatch if SSR text differed from client text; solved by initializing SSR and default client state to `zh-CN`, switching only after `useEffect` / user interaction.
