@@ -1,6 +1,6 @@
 # PixelForge
 
-同一仓库维护两个独立产品：**FolioForge · 页匠**负责 PDF，**PixelForge**负责图片转换。两个 Web 应用拥有独立首页、导航、依赖、构建、测试与部署产物。Electron 和 CI 暂停，先完成 Web 迁移；桌面代码保留但不参与工作区默认任务。完整边界见 [架构说明](docs/ARCHITECTURE.md)。项目使用 Turborepo、pnpm、Next.js App Router 和 Tailwind CSS 4。
+同一仓库维护两个独立产品：**FolioForge · 页匠**负责 PDF，**PixelForge**负责图片转换。两个 Web 应用拥有独立首页、导航、依赖、构建、测试与部署产物。Electron 暂停，Web CI/CD 已恢复；桌面代码保留但不参与工作区默认任务。完整边界见 [架构说明](docs/ARCHITECTURE.md)。项目使用 Turborepo、pnpm、Next.js App Router 和 Tailwind CSS 4。
 
 图片通过 Web Worker 调用 ImageMagick WASM 处理，HEIC 输出和 SVG 路径描摹使用仓库内 Rust + wasm-bindgen 模块，无需上传。Next.js 只导出静态文件，不运行 API、数据库或转换后端。保留的 Electron 方案将页面、Worker 和 WASM 一起打包，通过本地协议加载；本轮暂停桌面开发。
 
@@ -48,7 +48,7 @@ PDF 测试覆盖真实文档合并、顺序与旋转回读、撤销重做、页�
 
 当前先完成两个 Web 应用的迁移。`apps/desktop` 和 `apps/pdf-desktop` 保留代码，但从 pnpm 工作区排除，根目录暂不提供桌面构建、打包和测试命令。
 
-两个工作流保留为 `.github/workflows/desktop.yml.disabled` 和 `.github/workflows/web-deploy.yml.disabled`，不触发 CI、Release 或自动生产部署。恢复前先复核配置，再恢复扩展名。历史桌面发布说明见 [Electron 版本与发布](docs/DESKTOP-RELEASE.md)。
+桌面工作流保留为 `.github/workflows/desktop.yml.disabled`，不触发 CI 或 Release；Web 工作流 `.github/workflows/web-deploy.yml` 已启用。历史桌面发布说明见 [Electron 版本与发布](docs/DESKTOP-RELEASE.md)。
 
 ## 页面与功能
 
@@ -130,7 +130,7 @@ Next.js 配置 `output: 'export'`，分别生成 `apps/pdf-web/out/` 和 `apps/i
 
 PDF 默认正式地址为 `https://pdf.ljhboard.cn`，图片为 `https://img.ljhboard.cn`（需单独配置 DNS 与托管）。部署时将该子域名的 DNS 指向静态托管服务、配置 HTTPS，并上传完整 对应应用的 `out/`；其他公开访问域名应在托管端重定向到正式地址。当前改动不包含 DNS 或线上部署。
 
-仓库保留 Docker + 受限 SSH 上线配置，CI 与自动部署目前暂停，恢复步骤见 [部署、验证与回滚](docs/DEPLOYMENT.md)。`.github/workflows/web-deploy.yml.disabled` 恢复启用后会先验证 Web 与镜像，仅 main 且仓库变量 `ENABLE_PRODUCTION_DEPLOY=true` 时发布到 production。首次需要配置服务器、域名证书、专用 SSH 密钥和 GitHub 变量；Dockerfile 仅包装先前构建好的静态产物。
+仓库保留 Docker + 受限 SSH 上线配置，Web CI 与自动部署已启用，服务器升级与配置见 [部署、验证与回滚](docs/DEPLOYMENT.md)。工作流先验证 Web 与两个镜像，仅 main 且仓库变量 `ENABLE_PRODUCTION_DEPLOY=true` 时依次发布 PDF 站与图片站到 production。首次需要配置服务器、域名证书、专用 SSH 密钥和 GitHub 变量；Dockerfile 仅包装先前构建好的静态产物。
 
 各应用目录中的 `.env.example` 列出构建时配置。可复制为该目录的 `.env.local`，或在 CI 设置同名环境变量；修改后必须重新构建。`NEXT_PUBLIC_SITE_URL` 必须是无子路径、查询参数的 HTTP(S) origin。公开预览环境设置 `NEXT_PUBLIC_SITE_INDEXABLE=false`，输出 `noindex, follow` 和空站点地图；本地预览本身不应公开暴露给搜索引擎。
 
@@ -144,7 +144,7 @@ PDF 默认正式地址为 `https://pdf.ljhboard.cn`，图片为 `https://img.ljh
 
 已本地安装并使用 [impeccable](https://github.com/pbakaus/impeccable)。先展示三个首页效果图及工作台效果图，用户选择 A「全幅转换对比」，再展示可点击页面并接入正式路由和 Electron。中文文案使用本地 humanizer-zh 技能润色。
 
-效果图、选择记录、素材来源和实际页面截图位于 `.impeccable/`。自动设计引擎下载失败，本轮未执行其自动测量门禁，不能将人工截图复核视为自动审计通过。首页山景为 AI 生成的示例素材，生成记录见 `.impeccable/sample-landscape.provenance.json`。
+效果图、选择记录、素材来源和实际页面截图位于 `.impeccable/`。自动设计引擎下载失败，本轮未执行其自动测量门禁，不能将人工截图复核视为自动审计通过。首页山景为真实摄影素材（优胜美地高山湖泊倒影实拍），来源记录见 `.impeccable/sample-landscape.provenance.json`，非 AI 生成。
 
 ImageMagick WASM 的 LICENSE 和 NOTICE 随静态资源及桌面包保留于 `web/licenses/magick-wasm/`（网页源码对应 `apps/image-web/public/licenses/magick-wasm/`）。Electron 自带的许可证文件保留在便携目录中。
 

@@ -86,7 +86,7 @@ export function ImageComparison({ source, file, result, targetFormat, working, p
     setBefore(result.before); setAfter(result.after); setFallback(true);
   };
 
-  return <section ref={root} className="image-comparison" aria-label={t.compare.title}>
+  return <section ref={root} className="image-comparison" aria-label="图片转换前后对照">
     <div className="image-compare-toolbar">
       <strong><ArrowLeftRight size={15} />{t.compare.title}</strong>
       <div className="image-zoom-controls" role="group" aria-label={t.compare.zoomGroup}>

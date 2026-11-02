@@ -71,7 +71,7 @@ node scripts/test-runtime-image.mjs folioforge:sha-<SHA> <SHA> pdf
 node scripts/test-runtime-image.mjs pixelforge:sha-<SHA> <SHA> image
 ```
 
-当前两个 CI 工作流均暂停，配置保留为 `.github/workflows/desktop.yml.disabled` 和 `.github/workflows/web-deploy.yml.disabled`，GitHub 不会执行这两个文件。使用 `.disabled` 扩展名避免将整份注释的 YAML 当成无效工作流。恢复 CI 前先复核配置，再恢复 `.yml` 扩展名；Web 配置已适配两套独立产物。
+Web CI/CD 已恢复为 `.github/workflows/web-deploy.yml`，同时验证并发布两套独立产物。桌面工作流因 Electron 暂停且桌面目录已被工作区排除，仍保留为 `.github/workflows/desktop.yml.disabled`，GitHub 不会执行；恢复桌面开发时再重新纳入工作区并恢复 `.yml` 扩展名。
 
 两个新域名是构建配置默认值，需要完成 DNS 与站点配置后上线。当前准备记录见 [域名切换准备](PRODUCTION-DOMAINS.md)，仓库配置变更不代表已上线。
 

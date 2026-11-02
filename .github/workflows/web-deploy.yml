@@ -1,4 +1,3 @@
-# 暂停：先完成 Web 应用迁移；恢复执行前将扩展名改回 .yml 并复核配置。
 name: Web CI and Deploy
 
 on:
@@ -79,7 +78,7 @@ jobs:
     timeout-minutes: 35
     environment:
       name: production
-      url: https://pdf.ljhboard.cn
+      url: https://img.ljhboard.cn
     concurrency:
       group: folioforge-production
       cancel-in-progress: false
@@ -104,11 +103,13 @@ jobs:
           path: apps/pdf-web/public/pdf-assets/ocr/v7/lang
           key: ocr-models-${{ hashFiles('apps/pdf-web/scripts/prepare-ocr-assets.mjs') }}
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @pixelforge/pdf-web build
-      - name: Build and verify release image
+      - run: pnpm build
+      - name: Build and verify release images
         run: |
           docker build --build-arg RELEASE_SHA="$GITHUB_SHA" -t "folioforge:sha-$GITHUB_SHA" .
-          node scripts/test-runtime-image.mjs "folioforge:sha-$GITHUB_SHA" "$GITHUB_SHA"
+          node scripts/test-runtime-image.mjs "folioforge:sha-$GITHUB_SHA" "$GITHUB_SHA" pdf
+          docker build --build-arg WEB_APP=image-web --build-arg RELEASE_SHA="$GITHUB_SHA" -t "pixelforge:sha-$GITHUB_SHA" .
+          node scripts/test-runtime-image.mjs "pixelforge:sha-$GITHUB_SHA" "$GITHUB_SHA" image
       - name: Configure restricted SSH client
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -119,15 +120,21 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
-      - name: Deploy immutable image stream
+      - name: Deploy immutable image streams
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER || 'folioforge-deploy' }}
         run: |
           test -n "$DEPLOY_HOST"
-          docker save "folioforge:sha-$GITHUB_SHA" | gzip | ssh -i ~/.ssh/deploy_key \
-            -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" "deploy sha-$GITHUB_SHA"
-      - name: Verify public release
-        run: node scripts/verify-deployment.mjs https://pdf.ljhboard.cn "$GITHUB_SHA"
+          ship() { # image, remote command
+            docker save "$1:sha-$GITHUB_SHA" | gzip | ssh -i ~/.ssh/deploy_key \
+              -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$DEPLOY_USER@$DEPLOY_HOST" "$2"
+          }
+          ship folioforge "deploy sha-$GITHUB_SHA"
+          ship pixelforge "deploy sha-$GITHUB_SHA image"
+      - name: Verify public releases
+        run: |
+          node scripts/verify-deployment.mjs https://pdf.ljhboard.cn "$GITHUB_SHA" pdf
+          node scripts/verify-deployment.mjs https://img.ljhboard.cn "$GITHUB_SHA" image
