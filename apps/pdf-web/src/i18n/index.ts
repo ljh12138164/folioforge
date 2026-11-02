@@ -947,6 +947,6 @@ const dictionaries: Record<Locale, PdfTranslations> = {
 
 export function usePdfI18n() {
   const { locale, setLocale, locales } = useLocale();
-  const t = dictionaries[locale] || dictionaries['zh-CN'];
+  const t = dictionaries[locale] || dictionaries['en-US'];
   return { locale, setLocale, locales, t };
 }
