@@ -30,7 +30,7 @@ function applyTheme(value: Preference) {
 export function ThemePicker() {
   const [preference, setPreference] = useState<Preference>('system');
   const { locale } = useLocale();
-  const t = themeLabels[locale] || themeLabels['zh-CN'];
+  const t = themeLabels[locale] || themeLabels['en-US'];
 
   useEffect(() => {
     let initial: Preference = 'system';

@@ -1447,6 +1447,6 @@ const dictionaries: Record<Locale, ImageTranslations> = {
 
 export function useImageI18n() {
   const { locale, setLocale, locales } = useLocale();
-  const t = dictionaries[locale] || dictionaries['zh-CN'];
+  const t = dictionaries[locale] || dictionaries['en-US'];
   return { locale, setLocale, locales, t };
 }
